@@ -31,7 +31,27 @@ resource "aws_vpc" "my_vpc" {
 resource "aws_subnet" "my_subnet" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "my_igw" {
+  vpc_id = aws_vpc.my_vpc.id
+}
+
+# Route Table for Public Subnet
+resource "aws_route_table" "my_route_table" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.my_igw.id
+  }
+}
+
+# Associate Route Table with Subnet
+resource "aws_route_table_association" "my_rta" {
+  subnet_id      = aws_subnet.my_subnet.id
+  route_table_id = aws_route_table.my_route_table.id
 }
 
 # Security Group Creation
