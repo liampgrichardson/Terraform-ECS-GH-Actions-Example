@@ -22,29 +22,34 @@ data "aws_ecr_repository" "existing_repository" {
 
 # VPC Creation
 resource "aws_vpc" "my_vpc" {
-  cidr_block = "10.0.0.0/16"
-  enable_dns_support = true
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
 }
 
+# Subnet Creation (Public Subnet for Fargate tasks)
 resource "aws_subnet" "my_subnet" {
-  vpc_id = aws_vpc.my_vpc.id
-  cidr_block = "10.0.1.0/24"
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
 }
 
 # Security Group Creation
 resource "aws_security_group" "my_security_group" {
   name_prefix = "my-security-group"
+  vpc_id      = aws_vpc.my_vpc.id
+
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -54,20 +59,45 @@ resource "aws_ecs_cluster" "my_cluster" {
   name = "my-cluster"
 }
 
+# ECS Task Execution Role
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Effect    = "Allow"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 # ECS Task Definition Creation
 resource "aws_ecs_task_definition" "my_task_definition" {
-  family = "my-task-definition"
+  family                   = "my-task-definition"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  cpu                      = "256" # Specify CPU for Fargate
+  memory                   = "512" # Specify Memory for Fargate
+
   container_definitions = jsonencode([
     {
-      name = "my-container"
-      image = "${data.aws_ecr_repository.existing_repository.repository_url}:latest"
-      network_mode            = "bridge"
-      memory                  = 512
-      memory_reservation      = 256
+      name      = "my-container"
+      image     = "${data.aws_ecr_repository.existing_repository.repository_url}:latest"
+      cpu       = 256
+      memory    = 512
+      essential = true
       portMappings = [
         {
           containerPort = 80
-          hostPort = 80
+          hostPort      = 80
+          protocol      = "tcp"
         }
       ]
     }
@@ -76,9 +106,14 @@ resource "aws_ecs_task_definition" "my_task_definition" {
 
 # ECS Service Creation
 resource "aws_ecs_service" "my_service" {
-  name = "my-service"
-  cluster = aws_ecs_cluster.my_cluster.id
+  name            = "my-service"
+  cluster         = aws_ecs_cluster.my_cluster.id
   task_definition = aws_ecs_task_definition.my_task_definition.arn
-  desired_count = 1
-  launch_type = "EC2"
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.my_subnet.id]
+    security_groups = [aws_security_group.my_security_group.id]
+  }
 }
