@@ -1,16 +1,23 @@
-# Provider Configuration
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-      version = "3.63.0"
-    }
+# Define the provider
+provider "aws" {
+  region = var.aws_region
+  default_tags {
+    tags = var.global_tags
   }
 }
 
-# Configure the AWS Provider
-provider "aws" {
-  region = "us-east-1"
+# TF state bucket
+terraform {
+  backend "s3" {
+    bucket = "my-tfstate-bucket-001" # Replace with your S3 bucket name
+    key    = "terraform.tfstate"
+    region = "eu-west-1"             # Replace with your AWS region
+  }
+}
+
+# Reference the existing ECR repository
+data "aws_ecr_repository" "existing_repository" {
+  name = var.ecr_repository_name # Replace with the actual repository name
 }
 
 # VPC Creation
@@ -42,11 +49,6 @@ resource "aws_security_group" "my_security_group" {
   }
 }
 
-# ECR Repository Creation
-resource "aws_ecr_repository" "my_repository" {
-  name = "my-repository"
-}
-
 # ECS Cluster Creation
 resource "aws_ecs_cluster" "my_cluster" {
   name = "my-cluster"
@@ -58,7 +60,7 @@ resource "aws_ecs_task_definition" "my_task_definition" {
   container_definitions = jsonencode([
     {
       name = "my-container"
-      image = "${aws_ecr_repository.my_repository.repository_url}:latest"
+      image = "${data.aws_ecr_repository.existing_repository.repository_url}:latest"
       network_mode            = "bridge"
       memory                  = 512
       memory_reservation      = 256
@@ -79,13 +81,4 @@ resource "aws_ecs_service" "my_service" {
   task_definition = aws_ecs_task_definition.my_task_definition.arn
   desired_count = 1
   launch_type = "EC2"
-}
-
-# Add Terraform Backend Service
-terraform {
-  backend "s3" {
-    bucket = "terraformbackendaccess"
-    key    = "terraformbackendaccess.tfstate"
-    region = "us-east-1"
-  }
 }

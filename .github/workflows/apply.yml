@@ -1,64 +1,53 @@
-name: Apply Terraform Environment
+name: Terraform Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      parameter-name:
-        description: 'Apply Infrastructure'
-        required: true
+  workflow_dispatch: # Allows you to manually trigger the workflow
 
 jobs:
-  Apply_Infrastructure:
+  terraform:
     runs-on: ubuntu-latest
+    environment: aws
+
+    # Define environment variables at the job level
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          backend-config: |
-            bucket = "terraformbackendaccess"
-            key    = "terraformbackendaccess.tfstate"
-            region = "us-east-1"
-          terraform_version: 1.4.2
-      
-      - name: Initialize Terraform
-        working-directory: ./terraform
-        run: terraform init -input=false  
-        env:
-          TF_VAR_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          TF_VAR_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
+        IMAGE_TAG: demo_image
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Plan Terraform
-        id: plan
-        continue-on-error: true
-        working-directory: ./terraform
-        run: |
-          terraform plan -input=false -no-color -out=tfplan \
-          && terraform show -no-color tfplan  
-        env:
-          TF_VAR_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          TF_VAR_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
-  
-      - name: Apply Terraform
-        if: steps.plan.outcome == 'success'
-        id: apply
-        continue-on-error: true
-        working-directory: ./terraform
-        run: |
-          terraform apply \
-          -input=false \
-          -no-color \
-          tfplan
-        env:
-          TF_VAR_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          TF_VAR_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
+      # Step 2: Set up Terraform
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Initialize Terraform
+      run: terraform init
+
+    - name: Plan Terraform changes
+      run: terraform plan -out=tfplan
+
+    - name: Apply Terraform changes
+      env:
+        aws_region: ${{ secrets.AWS_REGION }}
+        ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
+      run: terraform apply --auto-approve
+
+    - name: Clean up
+      run: rm tfplan

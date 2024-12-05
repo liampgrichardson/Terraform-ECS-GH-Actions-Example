@@ -2,19 +2,11 @@
 name: "ECR-ECS-GH-Deployment"
 
 'on':
-  push:
-    branches:
-      - main
-    tags:
-      - "*"
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       parameter-name:
         description: 'Start Mannual Workflow'
-        required: true    
+        required: true
 
 jobs:
   ci:
