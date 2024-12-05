@@ -42,13 +42,16 @@ jobs:
       run: terraform init
 
     - name: Plan Terraform changes
+      env:
+        aws_region: ${{ secrets.AWS_REGION }}
+        ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
       run: terraform plan -out=tfplan
 
     - name: Apply Terraform changes
       env:
         aws_region: ${{ secrets.AWS_REGION }}
         ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
-      run: terraform apply --auto-approve
+      run: terraform apply tfplan
 
     - name: Clean up
       run: rm tfplan
