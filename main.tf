@@ -220,7 +220,7 @@ resource "aws_ecs_service" "my_service" {
   network_configuration {
     subnets         = [aws_subnet.my_subnet.id, aws_subnet.my_subnet_2.id]
     security_groups = [aws_security_group.my_security_group.id]
-    assign_public_ip = true
+    assign_public_ip = false  # can be false because alb handles traffic
   }
 
   load_balancer {
