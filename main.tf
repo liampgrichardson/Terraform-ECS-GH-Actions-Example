@@ -31,7 +31,6 @@ resource "aws_vpc" "my_vpc" {
 resource "aws_subnet" "my_subnet" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.1.0/24"
-  # map_public_ip_on_launch = true
   availability_zone       = "eu-west-1a" # Specify AZ
 }
 
@@ -39,7 +38,6 @@ resource "aws_subnet" "my_subnet" {
 resource "aws_subnet" "my_subnet_2" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.2.0/24"
-  # map_public_ip_on_launch = true
   availability_zone       = "eu-west-1b" # Specify another AZ
 }
 
