@@ -1,11 +1,11 @@
 # AWS Region
 variable "aws_region" {
-  description = "The AWS region to deploy resources in"
+  description = "The AWS region to deploy resources in, gotten from gh actions"
   type        = string
 }
 
 variable "ecr_repository_name" {
-  description = "Name of the ECR repository"
+  description = "Name of the ECR repository, gotten from gh actions"
   type        = string
 }
 

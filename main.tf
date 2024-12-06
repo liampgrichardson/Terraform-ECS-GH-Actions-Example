@@ -17,7 +17,7 @@ terraform {
 
 # Reference the existing ECR repository
 data "aws_ecr_repository" "existing_repository" {
-  name = var.ecr_repository_name # Replace with the actual repository name
+  name = var.ecr_repository_name # variable is received by gh actions workflow
 }
 
 # VPC Creation
