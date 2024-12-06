@@ -97,6 +97,18 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Add permissions for CloudWatch logging
+resource "aws_iam_role_policy_attachment" "ecs_cw_logging_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "ecs_log_group" {
+  name              = "/ecs/my-service"
+  retention_in_days = 7 # Adjust retention as needed
+}
+
 # ECS Task Definition Creation
 resource "aws_ecs_task_definition" "my_task_definition" {
   family                   = "my-task-definition"
@@ -120,6 +132,14 @@ resource "aws_ecs_task_definition" "my_task_definition" {
           protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.ecs_log_group.name
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      }
     }
   ])
 }
