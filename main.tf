@@ -27,11 +27,20 @@ resource "aws_vpc" "my_vpc" {
   enable_dns_hostnames = true
 }
 
-# Subnet Creation (Public Subnet for Fargate tasks)
+# Subnet Creation
 resource "aws_subnet" "my_subnet" {
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
+  # map_public_ip_on_launch = true
+  availability_zone       = "eu-west-1a" # Specify AZ
+}
+
+# Additional Subnet in a different AZ
+resource "aws_subnet" "my_subnet_2" {
+  vpc_id                  = aws_vpc.my_vpc.id
+  cidr_block              = "10.0.2.0/24"
+  # map_public_ip_on_launch = true
+  availability_zone       = "eu-west-1b" # Specify another AZ
 }
 
 # Internet Gateway
@@ -49,9 +58,15 @@ resource "aws_route_table" "my_route_table" {
   }
 }
 
-# Associate Route Table with Subnet
+# Associate Route Table with Subnet 1
 resource "aws_route_table_association" "my_rta" {
   subnet_id      = aws_subnet.my_subnet.id
+  route_table_id = aws_route_table.my_route_table.id
+}
+
+# Associate Route Table with Subnet 2
+resource "aws_route_table_association" "my_rta_2" {
+  subnet_id      = aws_subnet.my_subnet_2.id
   route_table_id = aws_route_table.my_route_table.id
 }
 
@@ -101,15 +116,15 @@ resource "aws_lb" "my_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_security_group.id]
-  subnets            = [aws_subnet.my_subnet.id]
+  subnets            = [aws_subnet.my_subnet.id, aws_subnet.my_subnet_2.id]
 }
 
 # ALB Target Group
 resource "aws_lb_target_group" "my_target_group" {
-  name     = "my-target-group"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.my_vpc.id
+  name       = "my-target-group"
+  port       = 80
+  protocol   = "HTTP"
+  vpc_id     = aws_vpc.my_vpc.id
   target_type = "ip" # Required for Fargate tasks
 }
 
@@ -205,7 +220,7 @@ resource "aws_ecs_service" "my_service" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = [aws_subnet.my_subnet.id]
+    subnets         = [aws_subnet.my_subnet.id, aws_subnet.my_subnet_2.id]
     security_groups = [aws_security_group.my_security_group.id]
     assign_public_ip = true
   }
@@ -215,10 +230,4 @@ resource "aws_ecs_service" "my_service" {
     container_name   = "my-container"
     container_port   = 80
   }
-}
-
-# Output the ALB DNS Name
-output "application_url" {
-  description = "The URL to access the deployed application"
-  value       = aws_lb.my_alb.dns_name
 }
