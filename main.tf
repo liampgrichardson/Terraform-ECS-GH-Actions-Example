@@ -231,3 +231,9 @@ resource "aws_ecs_service" "my_service" {
     container_port   = 80
   }
 }
+
+# Output the ALB DNS Name
+output "application_url" {
+  description = "The URL to access the deployed application"
+  value       = aws_lb.my_alb.dns_name
+}
