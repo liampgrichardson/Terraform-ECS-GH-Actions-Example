@@ -1,4 +1,4 @@
-name: Terraform Deploy
+name: Terraform Apply
 
 on:
   workflow_dispatch: # Allows you to manually trigger the workflow
@@ -6,9 +6,7 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    environment: aws
 
-    # Define environment variables at the job level
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -28,13 +26,12 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
-        IMAGE_TAG: startup_image
+        IMAGE_TAG: ${{ github.sha }}  # Use commit hash as image tag
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      # Step 2: Set up Terraform
     - name: Set up Terraform
       uses: hashicorp/setup-terraform@v2
 
@@ -45,6 +42,7 @@ jobs:
       env:
         TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
         TF_VAR_ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
+        TF_VAR_image_tag: ${{ steps.build-image.outputs.image }}  # Pass image tag to Terraform
       run: terraform plan -out=tfplan
 
     - name: Apply Terraform changes
