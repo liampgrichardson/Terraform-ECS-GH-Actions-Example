@@ -56,10 +56,13 @@ jobs:
         fi
 
         TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $TASK_DEF_ARN)
+
+        # Update container image and remove unsupported fields
         CONTAINER_DEF=$(jq --arg IMAGE "$NEW_IMAGE" \
           '.taskDefinition.containerDefinitions[0] |= (.image = $IMAGE)' <<< "$TASK_DEFINITION")
+        NEW_TASK_DEF=$(jq '.taskDefinition | 
+          del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .registeredAt, .registeredBy, .compatibilities)' <<< "$CONTAINER_DEF")
 
-        NEW_TASK_DEF=$(echo $CONTAINER_DEF | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .registeredAt, .registeredBy)')
         NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" | jq -r '.taskDefinition.taskDefinitionArn')
 
         aws ecs update-service \
