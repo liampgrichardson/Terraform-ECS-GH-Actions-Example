@@ -1,4 +1,4 @@
-name: ECS Deploy
+name: ECS Update
 
 on:
   workflow_dispatch: # Trigger this workflow manually
