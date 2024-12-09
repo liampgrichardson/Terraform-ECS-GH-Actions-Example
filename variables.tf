@@ -14,3 +14,8 @@ variable "global_tags" {
   description = "A map of global tags to apply to all resources"
   type        = map(string)
 }
+
+variable "image_tag" {
+  description = "The image tag to use in the ECS task definition"
+  type        = string
+}
