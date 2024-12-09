@@ -1,4 +1,0 @@
-name: "ECR-ECS-GH-Deployment"
-# TODO: add separate workflow here for ecs update
-on:
-  workflow_dispatch: # Allows you to manually trigger the workflow
