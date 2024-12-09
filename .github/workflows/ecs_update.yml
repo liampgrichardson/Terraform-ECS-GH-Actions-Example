@@ -45,17 +45,28 @@ jobs:
         CLUSTER_NAME=$(jq -r '.resources[] | select(.type=="aws_ecs_cluster") | .instances[0].attributes.name' terraform.tfstate)
         SERVICE_NAME=$(jq -r '.resources[] | select(.type=="aws_ecs_service") | .instances[0].attributes.name' terraform.tfstate)
 
-        # Update ECS task definition with new image
-        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $SERVICE_NAME)
-        CONTAINER_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "$NEW_IMAGE" '.taskDefinition.containerDefinitions[0] |= (.image = $IMAGE)')
-        NEW_TASK_DEF=$(echo $CONTAINER_DEF | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .registeredAt, .registeredBy)')
+        TASK_DEF_ARN=$(aws ecs describe-services \
+          --cluster $CLUSTER_NAME \
+          --services $SERVICE_NAME \
+          --query "services[0].taskDefinition" \
+          --output text)
 
-        # Register the new task definition
+        if [ "$TASK_DEF_ARN" == "None" ]; then
+          exit 1
+        fi
+
+        TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition $TASK_DEF_ARN)
+        CONTAINER_DEF=$(jq --arg IMAGE "$NEW_IMAGE" \
+          '.taskDefinition.containerDefinitions[0] |= (.image = $IMAGE)' <<< "$TASK_DEFINITION")
+
+        NEW_TASK_DEF=$(echo $CONTAINER_DEF | jq '.taskDefinition | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .registeredAt, .registeredBy)')
         NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF" | jq -r '.taskDefinition.taskDefinitionArn')
 
-        # Update ECS Service to use the new task definition
-        aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --task-definition $NEW_TASK_DEF_ARN
+        aws ecs update-service \
+          --cluster $CLUSTER_NAME \
+          --service $SERVICE_NAME \
+          --task-definition $NEW_TASK_DEF_ARN
 
     - name: Verify Deployment
       run: |
-        aws ecs describe-services --cluster my-cluster --services my-service
+        aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME
