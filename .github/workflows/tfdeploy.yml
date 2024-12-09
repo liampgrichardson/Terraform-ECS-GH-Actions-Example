@@ -40,16 +40,19 @@ jobs:
       uses: hashicorp/setup-terraform@v2
 
     - name: Initialize Terraform
-      run: terraform init
+      run: |
+        cd terraform
+        terraform init
 
     - name: Plan Terraform changes
       env:
         TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
         TF_VAR_ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
-      run: terraform plan -out=tfplan
+      run: |
+        cd terraform
+        terraform plan -out=tfplan
 
     - name: Apply Terraform changes
-      run: terraform apply tfplan
-
-    - name: Clean up
-      run: rm tfplan
+      run: |
+        cd terraform
+        terraform apply tfplan
