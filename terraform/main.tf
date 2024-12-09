@@ -217,6 +217,8 @@ resource "aws_ecs_service" "my_service" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  force_new_deployment = true # Ensures new tasks use the updated image
+
   network_configuration {
     subnets         = [aws_subnet.my_subnet.id, aws_subnet.my_subnet_2.id]
     security_groups = [aws_security_group.my_security_group.id]
