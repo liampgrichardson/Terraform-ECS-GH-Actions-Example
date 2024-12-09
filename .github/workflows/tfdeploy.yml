@@ -28,12 +28,11 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
-        IMAGE_TAG: latest
+        IMAGE_TAG: ${{ github.sha }}  # Use the commit SHA for unique tagging
       run: |
         cd application
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       # Step 2: Set up Terraform
     - name: Set up Terraform
@@ -48,6 +47,7 @@ jobs:
       env:
         TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
         TF_VAR_ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
+        TF_VAR_image_tag: ${{ github.sha }}  # Pass the image tag
       run: |
         cd terraform
         terraform plan -out=tfplan

@@ -186,7 +186,7 @@ resource "aws_ecs_task_definition" "my_task_definition" {
   container_definitions = jsonencode([
     {
       name      = "my-container"
-      image     = "${data.aws_ecr_repository.existing_repository.repository_url}:latest"
+      image     = "${data.aws_ecr_repository.existing_repository.repository_url}:${var.image_tag}"  # Use the image tag here
       cpu       = 256
       memory    = 512
       essential = true
@@ -236,4 +236,10 @@ resource "aws_ecs_service" "my_service" {
 output "application_url" {
   description = "The URL to access the deployed application"
   value       = aws_lb.my_alb.dns_name
+}
+
+output "image_tag" {
+  description = "The image tag for the deployed application"
+  value       = var.image_tag
+  sensitive   = true
 }
