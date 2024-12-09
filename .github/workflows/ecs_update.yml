@@ -41,7 +41,7 @@ jobs:
     - name: Update ECS Service with new image
       id: update-ecs
       run: |
-        NEW_IMAGE="${{ steps.build-image.outputs.image }}"
+        NEW_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         CLUSTER_NAME=$(jq -r '.resources[] | select(.type=="aws_ecs_cluster") | .instances[0].attributes.name' terraform.tfstate)
         SERVICE_NAME=$(jq -r '.resources[] | select(.type=="aws_ecs_service") | .instances[0].attributes.name' terraform.tfstate)
 
