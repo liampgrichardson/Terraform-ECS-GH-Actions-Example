@@ -186,7 +186,7 @@ resource "aws_ecs_task_definition" "my_task_definition" {
   container_definitions = jsonencode([
     {
       name      = "my-container"
-      image     = "${data.aws_ecr_repository.existing_repository.repository_url}:${var.image_tag}" # use variable for image tag
+      image     = "${data.aws_ecr_repository.existing_repository.repository_url}:latest"
       cpu       = 256
       memory    = 512
       essential = true
