@@ -22,6 +22,7 @@ def load_df():
     df = pd.DataFrame(data, index=date_range)
     return df
 
+
 layout = html.Div([
     html.Div(
         className="header-container",
