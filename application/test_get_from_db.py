@@ -38,6 +38,7 @@ def query_last_day(client, database_name, table_name):
             df = pd.DataFrame(rows, columns=columns)
             # Reorganize data to create new columns for each measure_name
             df_pivot = df.pivot_table(index='time', columns='measure_name', values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
+            # Reorganize indexes and columns
             df_pivot.columns = df_pivot.columns.droplevel(0)
             return df_pivot
         else:
