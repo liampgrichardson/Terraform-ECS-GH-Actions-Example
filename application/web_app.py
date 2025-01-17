@@ -251,6 +251,8 @@ def update_text(data, n_clicks):
 def update_data(n_clicks):
     _ = n_clicks  # n_clicks not used
     df = query_last_days(TIMESTREAM_CLIENT, DATABASE_NAME, TABLE_NAME, DAYS)
+    for col in ["close", "12h_close_mean", "desired_op_pct", "pfma"]:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
     df["12h_close_mean"] = df['close'].rolling(720).mean()
     df["12h_close_std"] = df['close'].rolling(720).std()
     df["12h_close_pos_std"] = (df['close'] - df["12h_close_mean"]).where(
