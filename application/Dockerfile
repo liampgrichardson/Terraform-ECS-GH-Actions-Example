@@ -2,7 +2,7 @@ FROM python:3.8-slim as release
 
 WORKDIR /app
 
-EXPOSE 80
+EXPOSE 8080
 
 COPY requirements.txt .
 

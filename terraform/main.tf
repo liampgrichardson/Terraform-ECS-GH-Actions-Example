@@ -74,8 +74,8 @@ resource "aws_security_group" "alb_security_group" {
   vpc_id      = aws_vpc.my_vpc.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -94,8 +94,8 @@ resource "aws_security_group" "my_security_group" {
   vpc_id      = aws_vpc.my_vpc.id
 
   ingress {
-    from_port       = 80
-    to_port         = 80
+    from_port       = 8080
+    to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_security_group.id]
   }
@@ -120,7 +120,7 @@ resource "aws_lb" "my_alb" {
 # ALB Target Group
 resource "aws_lb_target_group" "my_target_group" {
   name       = "my-target-group"
-  port       = 80
+  port       = 8080
   protocol   = "HTTP"
   vpc_id     = aws_vpc.my_vpc.id
   target_type = "ip" # Required for Fargate tasks
@@ -129,7 +129,7 @@ resource "aws_lb_target_group" "my_target_group" {
 # ALB Listener
 resource "aws_lb_listener" "http_listener" {
   load_balancer_arn = aws_lb.my_alb.arn
-  port              = 80
+  port              = 8080
   protocol          = "HTTP"
 
   default_action {
@@ -192,8 +192,8 @@ resource "aws_ecs_task_definition" "my_task_definition" {
       essential = true
       portMappings = [
         {
-          containerPort = 80
-          hostPort      = 80
+          containerPort = 8080
+          hostPort      = 8080
           protocol      = "tcp"
         }
       ]
@@ -228,7 +228,7 @@ resource "aws_ecs_service" "my_service" {
   load_balancer {
     target_group_arn = aws_lb_target_group.my_target_group.arn
     container_name   = "my-container"
-    container_port   = 80
+    container_port   = 8080
   }
 }
 
