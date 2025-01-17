@@ -4,7 +4,8 @@ from botocore.exceptions import ClientError
 pd.set_option('display.max_columns', None)
 
 
-def query_last_day(client, database_name, table_name):
+def query_last_days(client, database_name, table_name, days):
+    total_ms = days * 86400000
     # Query to fetch the last record to one day before the last record
     query = f"""
         WITH last_record_time AS (
@@ -13,7 +14,7 @@ def query_last_day(client, database_name, table_name):
         )
         SELECT * 
         FROM "{database_name}"."{table_name}"
-        WHERE time BETWEEN TIMESTAMPADD('MILLISECOND', -86400000, (SELECT last_time FROM last_record_time))
+        WHERE time BETWEEN TIMESTAMPADD('MILLISECOND', -{total_ms}, (SELECT last_time FROM last_record_time))
                        AND (SELECT last_time FROM last_record_time)
         ORDER BY time DESC
     """
@@ -57,8 +58,8 @@ def main():
     # Initialize boto3 client
     timestream_client = boto3.client("timestream-query", region_name="eu-west-1")  # Replace region if necessary
 
-    # Query the last day's data
-    df = query_last_day(timestream_client, database_name, table_name)
+    # Query the last days data
+    df = query_last_days(timestream_client, database_name, table_name, 7)
 
     if df is not None:
         print("\nData retrieved from Timestream:")

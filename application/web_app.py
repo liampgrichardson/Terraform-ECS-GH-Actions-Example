@@ -2,6 +2,14 @@ from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import boto3
+from botocore.exceptions import ClientError
+
+# Configuration for Timestream
+TIMESTREAM_CLIENT = boto3.client("timestream-query", region_name="eu-west-1")
+DATABASE_NAME = "my-timestream-database"  # Replace with your database name
+TABLE_NAME = "TestTable"  # Replace with your table name
+DAYS = 7  # Lookback range in days
 
 app = Dash(__name__)
 
@@ -21,6 +29,54 @@ def load_df():
 
     df = pd.DataFrame(data, index=date_range)
     return df
+
+
+def query_last_days(timestream_client, database_name, table_name, days):
+
+    total_ms = days * 86400000
+    # Query to fetch the last record to one day before the last record
+    query = f"""
+        WITH last_record_time AS (
+            SELECT MAX(time) AS last_time
+            FROM "{database_name}"."{table_name}"
+        )
+        SELECT * 
+        FROM "{database_name}"."{table_name}"
+        WHERE time BETWEEN TIMESTAMPADD('MILLISECOND', -{total_ms}, (SELECT last_time FROM last_record_time))
+                       AND (SELECT last_time FROM last_record_time)
+        ORDER BY time DESC
+    """
+
+    try:
+        paginator = timestream_client.get_paginator("query")
+        response_iterator = paginator.paginate(QueryString=query)
+
+        rows = []
+        columns = None
+
+        for response in response_iterator:
+            if "ColumnInfo" in response and not columns:
+                columns = [col["Name"] for col in response["ColumnInfo"]]
+            for row in response["Rows"]:
+                rows.append([
+                    datum.get("ScalarValue") for datum in row["Data"]
+                ])
+
+        if columns and rows:
+            # Create DataFrame
+            df = pd.DataFrame(rows, columns=columns)
+            # Reorganize data to create new columns for each measure_name
+            df_pivot = df.pivot_table(index='time', columns='measure_name', values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
+            # Reorganize indexes and columns
+            df_pivot.columns = df_pivot.columns.droplevel(0)
+            return df_pivot
+        else:
+            print("No data retrieved.")
+            return None
+
+    except ClientError as e:
+        print(f"Error querying data: {e}")
+        return None
 
 
 layout = html.Div([
@@ -115,6 +171,7 @@ layout = html.Div([
 
 ],)
 
+
 app.layout = layout
 
 
@@ -193,7 +250,7 @@ def update_text(data, n_clicks):
     Input('submit-reload', 'n_clicks'))
 def update_data(n_clicks):
     _ = n_clicks  # n_clicks not used
-    df = load_df()
+    df = query_last_days(TIMESTREAM_CLIENT, DATABASE_NAME, TABLE_NAME, DAYS)
     df["12h_close_mean"] = df['close'].rolling(720).mean()
     df["12h_close_std"] = df['close'].rolling(720).std()
     df["12h_close_pos_std"] = (df['close'] - df["12h_close_mean"]).where(
