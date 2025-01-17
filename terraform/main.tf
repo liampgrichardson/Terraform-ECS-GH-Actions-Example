@@ -183,6 +183,8 @@ resource "aws_ecs_task_definition" "my_task_definition" {
   cpu                      = "256" # Specify CPU for Fargate
   memory                   = "512" # Specify Memory for Fargate
 
+  force_new_deployment = true # Ensures new tasks use the updated image
+
   container_definitions = jsonencode([
     {
       name      = "my-container"
