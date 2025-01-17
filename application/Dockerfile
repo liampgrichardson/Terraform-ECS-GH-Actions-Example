@@ -8,6 +8,6 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY app.py .
+COPY web_app.py .
 
-ENTRYPOINT [ "python", "app.py" ]
+ENTRYPOINT [ "python", "web_app.py" ]
