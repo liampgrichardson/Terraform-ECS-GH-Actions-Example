@@ -156,14 +156,43 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
+# ECS Task Execution Role (updated to include Timestream policy)
+resource "aws_iam_policy" "ecs_timestream_policy" {
+  name        = "ecsTimestreamPolicy"
+  description = "Policy to allow ECS tasks to interact with Timestream"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid       = "AllowTimestreamReadAccess",
+        Effect    = "Allow",
+        Action    = [
+          "timestream:DescribeEndpoints",
+          "timestream:Select",
+          "timestream:SelectValues",
+          "timestream:DescribeTable",
+          "timestream:ListMeasures"
+        ],
+        Resource  = "*"
+      }
+    ]
+  })
+}
+
+# Attach the Timestream policy to the ECS Task Execution Role
+resource "aws_iam_role_policy_attachment" "ecs_timestream_policy_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_timestream_policy.arn
+}
+
 # Add permissions for task execution
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
 # Add permissions for CloudWatch logging
-resource "aws_iam_role_policy_attachment" "ecs_cw_logging_policy" {
+resource "aws_iam_role_policy_attachment" "ecs_cw_logging_policy_attachment" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 }
