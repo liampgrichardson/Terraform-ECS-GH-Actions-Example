@@ -156,6 +156,18 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecsTaskRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Effect    = "Allow"
+    }]
+  })
+}
+
 # ECS Task Execution Role (updated to include Timestream policy)
 resource "aws_iam_policy" "ecs_timestream_policy" {
   name        = "ecsTimestreamPolicy"
@@ -169,6 +181,7 @@ resource "aws_iam_policy" "ecs_timestream_policy" {
         Action    = [
           "timestream:DescribeEndpoints",
           "timestream:Select",
+          "timestream:Query",
           "timestream:SelectValues",
           "timestream:DescribeTable",
           "timestream:ListMeasures"
@@ -181,7 +194,7 @@ resource "aws_iam_policy" "ecs_timestream_policy" {
 
 # Attach the Timestream policy to the ECS Task Execution Role
 resource "aws_iam_role_policy_attachment" "ecs_timestream_policy_attachment" {
-  role       = aws_iam_role.ecs_task_execution_role.name
+  role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.ecs_timestream_policy.arn
 }
 
