@@ -8,6 +8,6 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY web_app.py .
+COPY web_app_timestream_v2.py .
 
-ENTRYPOINT [ "python", "web_app.py" ]
+ENTRYPOINT [ "python", "web_app_timestream_v2.py" ]

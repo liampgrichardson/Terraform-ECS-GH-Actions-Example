@@ -282,6 +282,7 @@ output "application_url" {
   value       = aws_lb.my_alb.dns_name
 }
 
+# Output image tag
 output "image_tag" {
   description = "The image tag for the deployed application"
   value       = var.image_tag
