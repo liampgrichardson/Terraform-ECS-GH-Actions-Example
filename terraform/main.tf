@@ -169,7 +169,7 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-# ECS Task Execution Role (updated to include Timestream policy)
+# ECS Task Role (updated to include Timestream policy)
 resource "aws_iam_policy" "ecs_timestream_policy" {
   name        = "ecsTimestreamPolicy"
   description = "Policy to allow ECS tasks to interact with Timestream"
@@ -193,7 +193,7 @@ resource "aws_iam_policy" "ecs_timestream_policy" {
   })
 }
 
-# Attach the Timestream policy to the ECS Task Execution Role
+# Attach the Timestream policy to the ECS Task Role
 resource "aws_iam_role_policy_attachment" "ecs_timestream_policy_attachment" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.ecs_timestream_policy.arn
