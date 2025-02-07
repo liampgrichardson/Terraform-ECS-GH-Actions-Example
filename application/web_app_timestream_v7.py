@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, dcc, html, Input, Output, callback_context
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
@@ -29,39 +29,36 @@ app.layout = html.Div([
 
     html.Div([
         html.Div([
-            html.Label("Select Data Columns:"),
-            dcc.Checklist(id='column-selector', inline=True, inputStyle={"margin-right": "5px"}),
-            html.Button("Reload Data", id="reload-button", n_clicks=0, className="reload-button"),
-        ], style={"width": "25%", "padding": "10px", "backgroundColor": "#F0F0F0"}),
-
-        html.Div([
             dcc.Graph(id='multi-axis-graph', config={'displayModeBar': False}),
-        ], style={"width": "70%", "padding": "10px"}),
-    ], style={"display": "flex", "justifyContent": "space-between"}),
+        ], style={"width": "100%", "padding": "10px"}),
+    ], style={"display": "flex", "justifyContent": "center"}),
+
+    html.Div([
+        html.Label("Select Data Columns:"),
+        html.Div([
+            dcc.Dropdown(id='column-selector', multi=True, placeholder="Select columns"),
+        ], style={"width": "100%", "padding": "10px"}),
+    ], style={"display": "flex", "justifyContent": "center"}),
+
+    html.Div(id="warning"),
 
     dcc.Store(id='data-store', data=None),
 ], style={"fontFamily": "Arial, sans-serif", "backgroundColor": "#E5E5E5"})
 
 
 @app.callback(
-    [Output('column-selector', 'options'), Output('data-store', 'data')],
-    Input('reload-button', 'n_clicks')
+    [Output('multi-axis-graph', 'figure'), Output('column-selector', 'options'), Output('warning', 'children'),
+     Output('data-store', 'data')],
+    [Input('column-selector', 'value'), Input('multi-axis-graph', 'id')]
 )
-def load_data(n_clicks):
+def update_graph_and_data(selected_columns, _):
     df = query_last_days(timestream_client, database_name, table_name, days)
     df = df.apply(pd.to_numeric, errors='coerce')
     df = df.dropna(axis=1, how='all')
+
     options = [{'label': col, 'value': col} for col in df.select_dtypes(include=[np.number]).columns]
-    return options, df.to_json(orient='split')
-
-
-@app.callback(
-    Output('multi-axis-graph', 'figure'),
-    [Input('column-selector', 'value'), Input('data-store', 'data')]
-)
-def update_graph(selected_columns, data):
-    df = pd.read_json(data, orient='split')
     fig = go.Figure()
+    warning_message = None
 
     if selected_columns:
         for i, col in enumerate(selected_columns):
@@ -83,7 +80,12 @@ def update_graph(selected_columns, data):
 
         fig.update_layout(**layout)
 
-    return fig
+    # Disable dropdown if 4 selections are made
+    if selected_columns and len(selected_columns) >= 4:
+        options = [{'label': opt['label'], 'value': opt['value'], 'disabled': True} for opt in options]
+        warning_message = html.P("Limit of 4 selections reached.", style={"color": "red"})
+
+    return fig, options, warning_message, df.to_json(orient='split')
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-FROM python:3.8-slim as release
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -10,4 +10,4 @@ RUN pip install -r requirements.txt
 
 COPY web_app_timestream_v2.py .
 
-ENTRYPOINT [ "python", "web_app_timestream_v2.py" ]
+ENTRYPOINT [ "python", "web_app_timestream_v11.py" ]

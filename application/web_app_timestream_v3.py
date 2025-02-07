@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import boto3
 from botocore.exceptions import ClientError
+from app_helpers.get_from_db import query_last_days
 
 # Configuration for Timestream
 TIMESTREAM_CLIENT = boto3.client("timestream-query", region_name="eu-west-1")
@@ -14,50 +15,6 @@ DAYS = 7  # Lookback range in days
 app = Dash(__name__)
 app.title = "BTC Trading Bot Monitor"
 app.css.config.serve_locally = True
-
-
-# Function to query Timestream
-def query_last_days(timestream_client, database_name, table_name, days):
-    total_ms = days * 86400000
-    query = f"""
-        WITH last_record_time AS (
-            SELECT MAX(time) AS last_time
-            FROM "{database_name}"."{table_name}"
-        )
-        SELECT * 
-        FROM "{database_name}"."{table_name}"
-        WHERE time BETWEEN TIMESTAMPADD('MILLISECOND', -{total_ms}, (SELECT last_time FROM last_record_time))
-                       AND (SELECT last_time FROM last_record_time)
-        ORDER BY time DESC
-    """
-    try:
-        paginator = timestream_client.get_paginator("query")
-        response_iterator = paginator.paginate(QueryString=query)
-
-        rows = []
-        columns = None
-        for response in response_iterator:
-            if "ColumnInfo" in response and not columns:
-                columns = [col["Name"] for col in response["ColumnInfo"]]
-            for row in response["Rows"]:
-                rows.append([
-                    datum.get("ScalarValue") for datum in row["Data"]
-                ])
-
-        if columns and rows:
-            df = pd.DataFrame(rows, columns=columns)
-            df_pivot = df.pivot_table(index='time', columns='measure_name',
-                                       values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
-            df_pivot.columns = df_pivot.columns.droplevel(0)
-            return df_pivot
-        else:
-            print("No data retrieved.")
-            return None
-
-    except ClientError as e:
-        print(f"Error querying data: {e}")
-        return None
-
 
 # Updated layout
 app.layout = html.Div([
@@ -77,31 +34,12 @@ app.layout = html.Div([
     ),
 
     html.Div(
-        children=[
-            html.Label('Select Graphs to Display:', style={"fontWeight": "bold", "marginBottom": "10px"}),
-            dcc.Checklist(
-                id='graph-selection',
-                options=[
-                    {'label': 'Price Data', 'value': 'price-data'},
-                    {'label': 'Volatility Data', 'value': 'volatility-data'},
-                    {'label': 'Position Data', 'value': 'position-data'},
-                    {'label': 'Order Data', 'value': 'order-data'}
-                ],
-                value=['price-data', 'volatility-data', 'position-data', 'order-data'],
-                inline=True,
-                style={"marginBottom": "20px"}
-            ),
-        ],
-        style={"padding": "20px", "backgroundColor": "#F9F9F9", "borderRadius": "10px", "marginBottom": "20px"}
-    ),
-
-    html.Div(
         className="graph-container",
         children=[
-            dcc.Graph(id='price-data', config={'displayModeBar': False}, style={"display": "block"}),
-            dcc.Graph(id='volatility-data', config={'displayModeBar': False}, style={"display": "block"}),
-            dcc.Graph(id='position-data', config={'displayModeBar': False}, style={"display": "block"}),
-            dcc.Graph(id='order-data', config={'displayModeBar': False}, style={"display": "block"}),
+            dcc.Graph(id='price-data', config={'displayModeBar': False}),
+            dcc.Graph(id='volatility-data', config={'displayModeBar': False}),
+            dcc.Graph(id='position-data', config={'displayModeBar': False}),
+            dcc.Graph(id='order-data', config={'displayModeBar': False}),
         ],
         style={
             "display": "flex",
@@ -159,18 +97,6 @@ app.layout = html.Div([
 
     dcc.Store(id='data-store', data=None),
 ], style={"fontFamily": "Arial, sans-serif", "backgroundColor": "#E5E5E5"})
-
-
-@app.callback(
-    Output('price-data', 'style'),
-    Output('volatility-data', 'style'),
-    Output('position-data', 'style'),
-    Output('order-data', 'style'),
-    Input('graph-selection', 'value'))
-def update_graph_visibility(selected_graphs):
-    all_graphs = ['price-data', 'volatility-data', 'position-data', 'order-data']
-    styles = {graph: {"display": "block"} if graph in selected_graphs else {"display": "none"} for graph in all_graphs}
-    return styles['price-data'], styles['volatility-data'], styles['position-data'], styles['order-data']
 
 
 @app.callback(

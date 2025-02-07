@@ -1,5 +1,5 @@
 from dash import Dash, dcc, html, Input, Output
-import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import boto3
@@ -17,8 +17,10 @@ app.css.config.serve_locally = True
 
 
 # Function to query Timestream
-def query_last_days(timestream_client, database_name, table_name, days):
+
+def query_last_days(client, database_name, table_name, days):
     total_ms = days * 86400000
+    # Query to fetch the last record to one day before the last record
     query = f"""
         WITH last_record_time AS (
             SELECT MAX(time) AS last_time
@@ -30,12 +32,14 @@ def query_last_days(timestream_client, database_name, table_name, days):
                        AND (SELECT last_time FROM last_record_time)
         ORDER BY time DESC
     """
+
     try:
-        paginator = timestream_client.get_paginator("query")
+        paginator = client.get_paginator("query")
         response_iterator = paginator.paginate(QueryString=query)
 
         rows = []
         columns = None
+
         for response in response_iterator:
             if "ColumnInfo" in response and not columns:
                 columns = [col["Name"] for col in response["ColumnInfo"]]
@@ -45,9 +49,11 @@ def query_last_days(timestream_client, database_name, table_name, days):
                 ])
 
         if columns and rows:
+            # Create DataFrame
             df = pd.DataFrame(rows, columns=columns)
-            df_pivot = df.pivot_table(index='time', columns='measure_name',
-                                       values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
+            # Reorganize data to create new columns for each measure_name
+            df_pivot = df.pivot_table(index='time', columns='measure_name', values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
+            # Reorganize indexes and columns
             df_pivot.columns = df_pivot.columns.droplevel(0)
             return df_pivot
         else:
@@ -59,7 +65,7 @@ def query_last_days(timestream_client, database_name, table_name, days):
         return None
 
 
-# Updated layout
+# App Layout
 app.layout = html.Div([
     html.Div(
         className="header-container",
@@ -67,185 +73,68 @@ app.layout = html.Div([
             html.H1('BTC Trading Bot Monitor', className="app-title"),
             html.P('Live metrics from the trading bot, updated every minute.', className="app-description"),
         ],
-        style={
-            "textAlign": "center",
-            "backgroundColor": "#2D2D2D",
-            "color": "white",
-            "padding": "20px",
-            "borderBottom": "4px solid #FFD700"
-        },
+        style={"textAlign": "center", "backgroundColor": "#2D2D2D", "color": "white", "padding": "20px"}
     ),
 
     html.Div(
-        className="graph-container",
+        style={"display": "flex", "gap": "20px", "padding": "20px"},
         children=[
-            dcc.Graph(id='price-data', config={'displayModeBar': False}, style={'display': 'block'}),
-            dcc.Graph(id='volatility-data', config={'displayModeBar': False}, style={'display': 'none'}),
-            dcc.Graph(id='position-data', config={'displayModeBar': False}, style={'display': 'none'}),
-            dcc.Graph(id='order-data', config={'displayModeBar': False}, style={'display': 'none'}),
-        ],
-        style={
-            "display": "flex",
-            "flexDirection": "column",
-            "gap": "20px",
-            "padding": "20px",
-            "backgroundColor": "#F9F9F9",
-            "paddingBottom": "7.5%",
-        },
-    ),
-
-    html.Div(
-        children=[html.Br()]
-    ),
-
-    html.Div([
-        html.Div(
-            children=[
-                html.P('Lookback range (hours):', style={"marginBottom": "5px"}),
-                dcc.RangeSlider(
-                    id='range-slider',
-                    min=-10080,
-                    max=0,
-                    step=10,
-                    value=[-10080, 0],
-                    marks={i: {"label": f"{int(24 * i / 1440)}h"} for i in range(-10080, 1, 1440)},
-                    tooltip={"placement": "bottom", "always_visible": True},
-                )
-            ],
-            style={"width": "60%", "padding": "10px"}
-        ),
-        html.Div(
-            children=[
-                html.P('Select Graph:', style={"marginBottom": "5px"}),
-                dcc.Dropdown(
-                    id='graph-selector',
-                    options=[
-                        {'label': 'Price Data', 'value': 'price-data'},
-                        {'label': 'Volatility Data', 'value': 'volatility-data'},
-                        {'label': 'Position Data', 'value': 'position-data'},
-                        {'label': 'Order Data', 'value': 'order-data'}
-                    ],
-                    value='price-data',
-                    clearable=False
-                )
-            ],
-            style={"width": "20%", "padding": "10px"}
-        ),
-        html.Div(
-            children=[
-                html.Button('Reload Data', id='submit-reload', n_clicks=0, className="reload-button"),
-                html.P(id='button-press-text', style={"marginTop": "10px"})
-            ],
-            style={"width": "20%", "textAlign": "center", "padding": "10px"}
-        ),
-    ],
-        style={
-            "display": "flex",
-            "justifyContent": "space-between",
-            "alignItems": "center",
-            "backgroundColor": "#FFF",
-            "borderRadius": "10px",
-            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",
-            "padding": "10px",
-            "position": "fixed",
-            "bottom": "0",
-            "left": "0",
-            "right": "0",
-            "zIndex": "1000",
-        }
+            html.Div([
+                html.P("Select metrics to display:"),
+                dcc.Checklist(id='metric-selector', inline=False),
+            ], style={"width": "20%", "backgroundColor": "#FFF", "padding": "10px", "borderRadius": "5px"}),
+            html.Div([
+                dcc.Graph(id='multi-axis-graph', config={'displayModeBar': False})
+            ], style={"width": "80%"}),
+        ]
     ),
 
     dcc.Store(id='data-store', data=None),
-], style={"fontFamily": "Arial, sans-serif", "backgroundColor": "#E5E5E5"})
+
+    html.Div([
+        html.Button('Reload Data', id='submit-reload', n_clicks=0, className="reload-button"),
+        html.P(id='button-press-text', style={"marginTop": "10px"})
+    ], style={"textAlign": "center", "padding": "10px"})
+])
 
 
 @app.callback(
-    Output('price-data', 'figure'),
-    Output('volatility-data', 'figure'),
-    Output('position-data', 'figure'),
-    Output('order-data', 'figure'),
-    Input('data-store', 'data'),
-    Input('range-slider', 'value'),
-    Input('submit-reload', 'n_clicks'))
-def update_price_figures(data, slider_range, n_clicks):
-    _ = n_clicks
-    df = pd.read_json(data, orient='split')
-    start = df.index[max(slider_range[0] - 1, -len(df))]
-    stop = df.index[max(slider_range[1] - 1, -len(df))]
-    df = df.loc[start:stop]
+    [Output('multi-axis-graph', 'figure'),
+     Output('metric-selector', 'options')],
+    [Input('data-store', 'data'),
+     Input('metric-selector', 'value')]
+)
+def update_graph(data, selected_metrics):
+    df = pd.read_json(data, orient='split') if data else pd.DataFrame()
+    fig = go.Figure()
+    available_metrics = [{'label': col, 'value': col} for col in df.columns if df[col].dtype in ['float64', 'int64']]
 
-    fig1_cols = ["close", "pfma", "12h_close_mean"]
-    fig1 = px.line(df, x=df.index, y=np.intersect1d(fig1_cols, df.columns),
-                   template='plotly', title='Price Data')
-    fig1.update_layout(xaxis_title='Datetime', yaxis_title=None)
+    for i, metric in enumerate(selected_metrics or []):
+        fig.add_trace(go.Scatter(x=df.index, y=df[metric], mode='lines', name=metric, yaxis=f'y{i + 1}'))
+        fig.update_layout({f'yaxis{i + 1}': dict(title=metric, overlaying='y', side='right' if i % 2 else 'left')})
 
-    fig2_cols = ["12h_close_cv_pct", "12h_close_pos_cv_pct", "12h_close_neg_cv_pct"]
-    fig2 = px.line(df, x=df.index, y=np.intersect1d(fig2_cols, df.columns),
-                   template='plotly', title='Volatility Data')
-    fig2.update_layout(xaxis_title='Datetime', yaxis_title=None)
-
-    fig3_cols = ["desired_op_pct"]
-    fig3 = px.line(df, x=df.index, y=np.intersect1d(fig3_cols, df.columns),
-                   template='plotly', title='Position Data')
-    fig3.update_layout(xaxis_title='Datetime', yaxis_title=None)
-
-    fig4_df = pd.DataFrame(index=df.index.copy())
-    unique_strings = set(df['order_error'].dropna())
-    for string in unique_strings:
-        fig4_df[string] = df['order_error'].where(df['order_error'] == string)
-
-    fig4 = px.scatter(fig4_df, x=fig4_df.index, y=fig4_df.columns, template='plotly', title='Order Data')
-    fig4.update_layout(xaxis_title='Datetime', yaxis_title=None, showlegend=False)
-
-    return fig1, fig2, fig3, fig4
-
-
-@app.callback(
-    [Output('price-data', 'style'),
-     Output('volatility-data', 'style'),
-     Output('position-data', 'style'),
-     Output('order-data', 'style')],
-    Input('graph-selector', 'value'))
-def update_graph_visibility(selected_graph):
-    visible_style = {'display': 'block'}
-    hidden_style = {'display': 'none'}
-
-    return [
-        visible_style if selected_graph == 'price-data' else hidden_style,
-        visible_style if selected_graph == 'volatility-data' else hidden_style,
-        visible_style if selected_graph == 'position-data' else hidden_style,
-        visible_style if selected_graph == 'order-data' else hidden_style,
-    ]
+    fig.update_layout(title="Selected Metrics", xaxis_title="Datetime")
+    return fig, available_metrics
 
 
 @app.callback(
     Output('button-press-text', 'children'),
     Input('data-store', 'data'),
-    Input('submit-reload', 'n_clicks'))
+    Input('submit-reload', 'n_clicks')
+)
 def update_text(data, n_clicks):
-    _ = n_clicks
-    df = pd.read_json(data, orient='split')
-    return f"Data loaded up to {df.iloc[-1].name} (UTC)"
+    df = pd.read_json(data, orient='split') if data else pd.DataFrame()
+    return f"Data loaded up to {df.index[-1]} (UTC)" if not df.empty else "No data available."
 
 
 @app.callback(
     Output('data-store', 'data'),
-    Input('submit-reload', 'n_clicks'))
+    Input('submit-reload', 'n_clicks')
+)
 def update_data(n_clicks):
-    _ = n_clicks
     df = query_last_days(TIMESTREAM_CLIENT, DATABASE_NAME, TABLE_NAME, DAYS)
-    for col in ["close", "12h_close_mean", "desired_op_pct", "pfma"]:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-    df["12h_close_mean"] = df['close'].rolling(720).mean()
-    df["12h_close_std"] = df['close'].rolling(720).std()
-    df["12h_close_pos_std"] = (df['close'] - df["12h_close_mean"]).where(
-        df['close'] > df["12h_close_mean"]).fillna(0).pow(2).rolling(720, min_periods=1).mean().apply(np.sqrt)
-    df["12h_close_neg_std"] = (df['close'] - df["12h_close_mean"]).where(
-        df['close'] < df["12h_close_mean"]).fillna(0).pow(2).rolling(720, min_periods=1).mean().apply(np.sqrt)
-    df["12h_close_cv_pct"] = 100 * df['12h_close_std'] / df["12h_close_mean"]
-    df["12h_close_pos_cv_pct"] = 100 * df['12h_close_pos_std'] / df["12h_close_mean"]
-    df["12h_close_neg_cv_pct"] = 100 * df['12h_close_neg_std'] / df["12h_close_mean"]
-    return df.to_json(orient='split')
+    print(df.columns)
+    return df.to_json(orient='split') if df is not None else None
 
 
 if __name__ == '__main__':

@@ -29,15 +29,14 @@ app.layout = html.Div([
 
     html.Div([
         html.Div([
-            html.Label("Select Data Columns:"),
-            dcc.Checklist(id='column-selector', inline=True, inputStyle={"margin-right": "5px"}),
-            html.Button("Reload Data", id="reload-button", n_clicks=0, className="reload-button"),
-        ], style={"width": "25%", "padding": "10px", "backgroundColor": "#F0F0F0"}),
-
-        html.Div([
             dcc.Graph(id='multi-axis-graph', config={'displayModeBar': False}),
-        ], style={"width": "70%", "padding": "10px"}),
-    ], style={"display": "flex", "justifyContent": "space-between"}),
+        ], style={"width": "100%", "padding": "10px"}),
+    ], style={"display": "flex", "justifyContent": "center"}),
+
+    html.Div([
+        html.Label("Select Data Columns:"),
+        dcc.Dropdown(id='column-selector', multi=True, placeholder="Select columns"),
+    ], style={"width": "50%", "padding": "10px", "margin": "auto", "backgroundColor": "#F0F0F0"}),
 
     dcc.Store(id='data-store', data=None),
 ], style={"fontFamily": "Arial, sans-serif", "backgroundColor": "#E5E5E5"})
@@ -45,9 +44,9 @@ app.layout = html.Div([
 
 @app.callback(
     [Output('column-selector', 'options'), Output('data-store', 'data')],
-    Input('reload-button', 'n_clicks')
+    Input('multi-axis-graph', 'id')  # Triggers on load
 )
-def load_data(n_clicks):
+def load_data(_):
     df = query_last_days(timestream_client, database_name, table_name, days)
     df = df.apply(pd.to_numeric, errors='coerce')
     df = df.dropna(axis=1, how='all')
