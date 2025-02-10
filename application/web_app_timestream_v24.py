@@ -81,7 +81,7 @@ app.layout = html.Div([
                      })
         ],
         style={
-            "margin": "10px",
+            "margin": "20px",
             "marginTop": "20px",
             "backgroundColor": custom_blue_colors[2],
         }
