@@ -16,7 +16,7 @@ VALID_USERNAME_PASSWORD_PAIRS = {
 timestream_client = boto3.client("timestream-query", region_name="eu-west-1")
 database_name = "my-timestream-database"
 table_name = "TestTable"
-days = 2
+days = 3
 
 # Set Plotly Theme
 plotly_theme = "plotly"
