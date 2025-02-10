@@ -128,7 +128,25 @@ def render_content(tab):
             html.Ul([
                 html.Li("News item 1", style={"color": dark_blue}),
                 html.Li("News item 2", style={"color": dark_blue}),
-                html.Li("News item 3", style={"color": dark_blue})
+                html.Li("News item 3", style={"color": dark_blue}),
+            ], className="ui list"),
+            html.H3("Market Trends", className="ui header", style={"color": dark_blue}),
+            html.Ul([
+                html.Li("Market Trend item 1", style={"color": dark_blue}),
+                html.Li("Market Trend item 2", style={"color": dark_blue}),
+                html.Li("Market Trend item 3", style={"color": dark_blue}),
+            ], className="ui list"),
+            html.H3("Upcoming Events", className="ui header", style={"color": dark_blue}),
+            html.Ul([
+                html.Li("Upcoming Event item 1", style={"color": dark_blue}),
+                html.Li("Upcoming Event item 2", style={"color": dark_blue}),
+                html.Li("Upcoming Event item 3", style={"color": dark_blue})
+            ], className="ui list"),
+            html.H3("Investment Trends", className="ui header", style={"color": dark_blue}),
+            html.Ul([
+                html.Li("Investment Trend item 1", style={"color": dark_blue}),
+                html.Li("Investment Trend item 2", style={"color": dark_blue}),
+                html.Li("Investment Trend item 3", style={"color": dark_blue})
             ], className="ui list")
         ], className="ui raised segment")
 
@@ -160,7 +178,8 @@ def update_graph_and_data(selected_columns):
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',  # Inside the graph
         paper_bgcolor='rgba(0,0,0,0)',  # Outside the graph
-        margin=dict(l=40, r=40, t=60, b=60, pad=0)
+        margin=dict(l=40, r=40, t=60, b=60, pad=0),
+        showlegend=True
     )
 
     return fig, options, df.to_json(orient='split')
