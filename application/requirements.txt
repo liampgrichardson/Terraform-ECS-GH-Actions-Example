@@ -1,6 +1,6 @@
 boto3
 pandas
 dash
-dash-auth
 plotly
+dash-auth
 numpy
