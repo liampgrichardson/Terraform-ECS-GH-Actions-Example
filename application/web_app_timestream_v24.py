@@ -37,7 +37,7 @@ dark_blue = "#333333"  # Darker text for readability
 
 # Initialize the Dash app
 app = Dash(__name__)
-auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+# auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 
 app.title = "Dynamic Data Graph"
 
