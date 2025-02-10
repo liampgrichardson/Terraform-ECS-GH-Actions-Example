@@ -1,11 +1,11 @@
 from dash import Dash, dcc, html, Input, Output
-import dash_auth
 import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 import numpy as np
 import boto3
 from app_helpers.get_from_db import query_last_days
+# import dash_auth
 
 # Define authorized users
 VALID_USERNAME_PASSWORD_PAIRS = {
@@ -157,7 +157,12 @@ def render_content(tab):
     [Input('column-selector', 'value')]
 )
 def update_graph_and_data(selected_columns):
+    print("going to query_last_days")
     df = query_last_days(timestream_client, database_name, table_name, days)
+    print("got query")
+    print(f"len(df): {len(df)}")
+    print(f"len(df.columns): {len(df.columns)}")
+    print(f"df.iloc[-5:]): {df.iloc[-5:]}")
     df = df.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
 
     options = [{'label': col.lower(), 'value': col} for col in df.select_dtypes(include=[np.number]).columns]
@@ -181,7 +186,7 @@ def update_graph_and_data(selected_columns):
         margin=dict(l=40, r=40, t=60, b=60, pad=0),
         showlegend=True
     )
-
+    print("going to return update_graph_and_data")
     return fig, options, df.to_json(orient='split')
 
 
