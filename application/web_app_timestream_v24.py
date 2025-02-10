@@ -4,8 +4,8 @@ import plotly.io as pio
 import pandas as pd
 import numpy as np
 import boto3
+import dash_auth
 from app_helpers.get_from_db import query_last_days
-# import dash_auth
 
 # Define authorized users
 VALID_USERNAME_PASSWORD_PAIRS = {
@@ -16,7 +16,7 @@ VALID_USERNAME_PASSWORD_PAIRS = {
 timestream_client = boto3.client("timestream-query", region_name="eu-west-1")
 database_name = "my-timestream-database"
 table_name = "TestTable"
-days = 3
+days = 7
 
 # Set Plotly Theme
 plotly_theme = "plotly"
@@ -37,7 +37,7 @@ dark_blue = "#333333"  # Darker text for readability
 
 # Initialize the Dash app
 app = Dash(__name__)
-# auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 
 app.title = "Dynamic Data Graph"
 
