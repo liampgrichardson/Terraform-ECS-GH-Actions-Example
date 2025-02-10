@@ -110,7 +110,7 @@ resource "aws_security_group" "my_security_group" {
 
 # Application Load Balancer
 resource "aws_lb" "my_alb" {
-  name               = "my-alb"
+  name               = "Trading-Application-ALB"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_security_group.id]
