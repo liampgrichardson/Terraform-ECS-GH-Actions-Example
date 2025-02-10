@@ -1,6 +1,5 @@
 import boto3
 import pandas as pd
-import numpy as np
 from botocore.exceptions import ClientError
 pd.set_option('display.max_columns', None)
 
