@@ -1,10 +1,16 @@
 from dash import Dash, dcc, html, Input, Output
+import dash_auth
 import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 import numpy as np
 import boto3
 from app_helpers.get_from_db import query_last_days
+
+# Define authorized users
+VALID_USERNAME_PASSWORD_PAIRS = {
+    "TradeAppUser": "TradeApp2025"
+}
 
 # Configuration for Timestream
 timestream_client = boto3.client("timestream-query", region_name="eu-west-1")
@@ -29,7 +35,10 @@ custom_blue_colors = [
 neutral_bg_color = "#f4f4f9"  # Soft neutral background for better contrast
 dark_blue = "#333333"  # Darker text for readability
 
+# Initialize the Dash app
 app = Dash(__name__)
+auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
+
 app.title = "Dynamic Data Graph"
 
 app.layout = html.Div([
