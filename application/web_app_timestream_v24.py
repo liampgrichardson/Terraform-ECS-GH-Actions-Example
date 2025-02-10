@@ -20,7 +20,7 @@ pio.templates.default = plotly_theme
 custom_blue_colors = [
     "#1f77b4",  # Blue (main)
     "#aec7e8",  # Light Blue
-    "rgba(174, 199, 232, 0.2)",
+    "rgba(174, 199, 232, 0.3)",
     "#005b96",  # Deep Blue
     "#539ecd"   # Soft Blue
 ]
@@ -49,7 +49,7 @@ app.layout = html.Div([
         className="ui segment",
         children=[
             dcc.Tabs(id='tabs', value='graph-tab', children=[
-                dcc.Tab(label='Asset View', value='graph-tab', style={
+                dcc.Tab(label='Strategy View', value='graph-tab', style={
                     "color": dark_blue,
                     "border": "none"
                 }, selected_style={
