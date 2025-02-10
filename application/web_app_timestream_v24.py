@@ -142,7 +142,7 @@ def update_graph_and_data(selected_columns):
     df = query_last_days(timestream_client, database_name, table_name, days)
     df = df.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
 
-    options = [{'label': col, 'value': col} for col in df.select_dtypes(include=[np.number]).columns]
+    options = [{'label': col.lower(), 'value': col} for col in df.select_dtypes(include=[np.number]).columns]
     fig = go.Figure()
 
     if selected_columns:
