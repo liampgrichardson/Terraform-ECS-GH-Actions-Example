@@ -10,4 +10,4 @@ RUN pip install -r requirements.txt
 
 COPY web_app_timestream_v2.py .
 
-ENTRYPOINT [ "python", "web_app_timestream_v11.py" ]
+ENTRYPOINT [ "python", "web_app_timestream_v24.py" ]
