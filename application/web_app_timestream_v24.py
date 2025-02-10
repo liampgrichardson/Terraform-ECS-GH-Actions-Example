@@ -57,7 +57,7 @@ app.layout = html.Div([
                     "color": dark_blue,
                     "border": "none",
                 }),
-                dcc.Tab(label='Information View', value='news-tab', style={
+                dcc.Tab(label='Information Feed View', value='news-tab', style={
                     "color": dark_blue,
                     "border": "none"
                 }, selected_style={
