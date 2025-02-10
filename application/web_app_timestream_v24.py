@@ -191,4 +191,4 @@ def update_graph_and_data(selected_columns):
 
 
 if __name__ == '__main__':
-    app.run_server(port=80, debug=True, host="0.0.0.0")
+    app.run_server(port=80, debug=False, host="0.0.0.0")
