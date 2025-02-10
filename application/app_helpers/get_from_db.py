@@ -52,13 +52,6 @@ def query_last_days(client, database_name, table_name, days):
         return None
 
 
-def load_data(df):
-    df = df.apply(pd.to_numeric, errors='coerce')
-    df = df.dropna(axis=1, how='all')
-    options = [{'label': col, 'value': col} for col in df.select_dtypes(include=[np.number]).columns]
-    return options, df.to_json(orient='split')
-
-
 def main():
     database_name = "my-timestream-database"  # Replace with your Timestream database name
     table_name = "TestTable"  # Replace with your desired table name
