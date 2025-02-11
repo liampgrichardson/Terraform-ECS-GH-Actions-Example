@@ -8,7 +8,7 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY web_app_timestream_v24.py .
+COPY web_app_timestream_v25.py .
 COPY app_helpers/ app_helpers/
 
-ENTRYPOINT [ "python", "web_app_timestream_v24.py" ]
+ENTRYPOINT [ "python", "web_app_timestream_v25.py" ]
