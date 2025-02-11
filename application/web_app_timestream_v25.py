@@ -35,7 +35,7 @@ dark_blue = "#333333"
 app = Dash(__name__)
 auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 
-app.title = "Dynamic Data Graph"
+app.title = "Trading Application"
 
 app.layout = html.Div([
     dcc.Interval(id='interval-component', interval=60 * 1000, n_intervals=0),  # Query every minute
@@ -44,8 +44,8 @@ app.layout = html.Div([
     html.Div(
         className="header-container",
         children=[
-            html.H1("Dynamic Data Graph", className="ui header", style={"color": dark_blue}),
-            html.P("Select columns to display on the graph.", className="ui sub header", style={"color": dark_blue}),
+            html.H1("Trading Application Dashboard", className="ui header", style={"color": dark_blue}),
+            html.P("Select View", className="ui sub header", style={"color": dark_blue}),
         ],
         style={
             "textAlign": "center", "backgroundColor": custom_blue_colors[2], "color": dark_blue,
