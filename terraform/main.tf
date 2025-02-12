@@ -20,6 +20,48 @@ data "aws_ecr_repository" "existing_repository" {
   name = var.ecr_repository_name # variable is received by gh actions workflow
 }
 
+# Cognito User Pool
+resource "aws_cognito_user_pool" "my_user_pool" {
+  name = "my-user-pool"
+}
+
+# Cognito User Pool Client
+resource "aws_cognito_user_pool_client" "my_user_pool_client" {
+  name         = "my-user-pool-client"
+  user_pool_id = aws_cognito_user_pool.my_user_pool.id
+  generate_secret = false
+  allowed_oauth_flows = ["code"]
+  allowed_oauth_scopes = ["openid"]
+  callback_urls = ["http://${aws_lb.my_alb.dns_name}/oauth2/idpresponse"]
+}
+
+# Cognito User
+resource "aws_cognito_user" "admin_user" {
+  user_pool_id = aws_cognito_user_pool.my_user_pool.id
+  username     = var.cognito_username
+  password     = var.cognito_password
+  force_alias_creation = true
+}
+
+# ALB Listener with Cognito Authentication
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.my_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type = "authenticate-cognito"
+    authenticate_cognito {
+      user_pool_arn       = aws_cognito_user_pool.my_user_pool.arn
+      user_pool_client_id = aws_cognito_user_pool_client.my_user_pool_client.id
+      user_pool_domain    = aws_cognito_user_pool.my_user_pool.id
+      session_cookie_name = "AWSELBAuthSessionCookie"
+      scope               = "openid"
+      on_unauthenticated_request = "authenticate"
+    }
+  }
+}
+
 # VPC Creation
 resource "aws_vpc" "my_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -288,3 +330,17 @@ output "image_tag" {
   value       = var.image_tag
   sensitive   = true
 }
+
+# Output Cognito User Pool ID
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  value       = aws_cognito_user_pool.my_user_pool.id
+}
+
+# Output Cognito Client ID
+output "cognito_client_id" {
+  description = "Cognito Client ID"
+  value       = aws_cognito_user_pool_client.my_user_pool_client.id
+  sensitive   = true
+}
+

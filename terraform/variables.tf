@@ -19,3 +19,13 @@ variable "image_tag" {
   description = "The Docker image tag to use for the ECS task definition"
   type        = string
 }
+
+variable "cognito_username" {
+  description = "The username for app login"
+  type        = string
+}
+
+variable "cognito_password" {
+  description = "The password for app login"
+  type        = string
+}
