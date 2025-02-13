@@ -68,6 +68,33 @@ resource "aws_route_table_association" "my_rta_2" {
   route_table_id = aws_route_table.my_route_table.id
 }
 
+# Security Group Creation for ECS
+resource "aws_security_group" "my_security_group" {
+  name_prefix = "ecs-security-group"
+  vpc_id      = aws_vpc.my_vpc.id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_security_group.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ALB
+# AWS Managed SSL Certificate (No custom domain)
+resource "aws_acm_certificate" "managed_ssl_cert" {
+  domain_name       = "*.elb.amazonaws.com"  # Managed domain for ALB
+  validation_method = "DNS"  # This can be automatically validated by AWS
+}
+
 # Security Group Creation for ALB
 resource "aws_security_group" "alb_security_group" {
   name_prefix = "alb-security-group"
@@ -80,24 +107,11 @@ resource "aws_security_group" "alb_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Security Group Creation for ECS
-resource "aws_security_group" "my_security_group" {
-  name_prefix = "ecs-security-group"
-  vpc_id      = aws_vpc.my_vpc.id
-
   ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_security_group.id]
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -126,7 +140,21 @@ resource "aws_lb_target_group" "my_target_group" {
   target_type = "ip" # Required for Fargate tasks
 }
 
-# ALB Listener
+# HTTPS Listener for ALB
+resource "aws_lb_listener" "https_listener" {
+  load_balancer_arn = aws_lb.my_alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"   # Choose an appropriate SSL policy
+  certificate_arn   = aws_acm_certificate.managed_ssl_cert.arn  # Use the ARN of the managed ACM certificate
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.my_target_group.arn
+  }
+}
+
+# HTTP Listener for ALB
 resource "aws_lb_listener" "http_listener" {
   load_balancer_arn = aws_lb.my_alb.arn
   port              = 80
