@@ -43,7 +43,13 @@ resource "aws_cognito_user" "admin_user" {
   force_alias_creation = true
 }
 
-# ALB Listener with Cognito Authentication
+# ACM SSL Certificate for ALB
+resource "aws_acm_certificate" "my_cert" {
+  domain_name       = aws_lb.my_alb.dns_name
+  validation_method = "DNS"  # Use DNS validation
+}
+
+# ALB Listener with Cognito Authentication (HTTP)
 resource "aws_lb_listener" "http_listener" {
   load_balancer_arn = aws_lb.my_alb.arn
   port              = 80
@@ -59,6 +65,22 @@ resource "aws_lb_listener" "http_listener" {
       scope               = "openid"
       on_unauthenticated_request = "authenticate"
     }
+  }
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.my_target_group.arn
+  }
+}
+
+# ALB Listener with SSL (HTTPS)
+resource "aws_lb_listener" "https_listener" {
+  load_balancer_arn = aws_lb.my_alb.arn
+  port              = 443
+  protocol          = "HTTPS"
+
+  ssl_certificate {
+    certificate_arn = aws_acm_certificate.my_cert.arn
   }
 
   default_action {
@@ -123,6 +145,13 @@ resource "aws_security_group" "alb_security_group" {
   ingress {
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -323,17 +352,3 @@ output "image_tag" {
   value       = var.image_tag
   sensitive   = true
 }
-
-# Output Cognito User Pool ID
-output "cognito_user_pool_id" {
-  description = "Cognito User Pool ID"
-  value       = aws_cognito_user_pool.my_user_pool.id
-}
-
-# Output Cognito Client ID
-output "cognito_client_id" {
-  description = "Cognito Client ID"
-  value       = aws_cognito_user_pool_client.my_user_pool_client.id
-  sensitive   = true
-}
-
