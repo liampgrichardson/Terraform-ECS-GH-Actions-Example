@@ -20,65 +20,6 @@ data "aws_ecr_repository" "existing_repository" {
   name = var.ecr_repository_name # variable is received by gh actions workflow
 }
 
-# Cognito User Pool
-resource "aws_cognito_user_pool" "my_user_pool" {
-  name = "my-user-pool"
-}
-
-# Cognito User Pool Client
-resource "aws_cognito_user_pool_client" "my_user_pool_client" {
-  name         = "my-user-pool-client"
-  user_pool_id = aws_cognito_user_pool.my_user_pool.id
-  generate_secret = false
-  allowed_oauth_flows = ["code"]
-  allowed_oauth_scopes = ["openid"]
-  callback_urls = ["http://${aws_lb.my_alb.dns_name}/oauth2/idpresponse"]
-}
-
-# Cognito User
-resource "aws_cognito_user" "admin_user" {
-  user_pool_id = aws_cognito_user_pool.my_user_pool.id
-  username     = var.cognito_username
-  password     = var.cognito_password
-  force_alias_creation = true
-}
-
-# ACM SSL Certificate for ALB
-resource "aws_acm_certificate" "my_cert" {
-  domain_name       = aws_lb.my_alb.dns_name
-  validation_method = "DNS"  # Use DNS validation
-}
-
-# ALB Listener with SSL (HTTPS) and Cognito Authentication
-resource "aws_lb_listener" "https_listener" {
-  load_balancer_arn = aws_lb.my_alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-
-  ssl_policy = "ELBSecurityPolicy-2016-08"  # You can specify a different SSL policy here if needed
-
-  default_action {
-    type = "authenticate-cognito"
-    authenticate_cognito {
-      user_pool_arn       = aws_cognito_user_pool.my_user_pool.arn
-      user_pool_client_id = aws_cognito_user_pool_client.my_user_pool_client.id
-      user_pool_domain    = aws_cognito_user_pool.my_user_pool.id
-      session_cookie_name = "AWSELBAuthSessionCookie"
-      scope               = "openid"
-      on_unauthenticated_request = "authenticate"
-    }
-  }
-
-  # Forward action if authenticated
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.my_target_group.arn
-  }
-
-  # Attach the ACM certificate ARN for SSL termination
-  certificate_arn = aws_acm_certificate.my_cert.arn
-}
-
 # VPC Creation
 resource "aws_vpc" "my_vpc" {
   cidr_block           = "10.0.0.0/16"
@@ -139,13 +80,6 @@ resource "aws_security_group" "alb_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -190,6 +124,18 @@ resource "aws_lb_target_group" "my_target_group" {
   protocol   = "HTTP"
   vpc_id     = aws_vpc.my_vpc.id
   target_type = "ip" # Required for Fargate tasks
+}
+
+# ALB Listener
+resource "aws_lb_listener" "http_listener" {
+  load_balancer_arn = aws_lb.my_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.my_target_group.arn
+  }
 }
 
 # ECS Cluster Creation
