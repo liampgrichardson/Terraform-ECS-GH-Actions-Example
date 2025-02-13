@@ -49,11 +49,13 @@ resource "aws_acm_certificate" "my_cert" {
   validation_method = "DNS"  # Use DNS validation
 }
 
-# ALB Listener with Cognito Authentication (HTTP)
-resource "aws_lb_listener" "http_listener" {
+# ALB Listener with SSL (HTTPS) and Cognito Authentication
+resource "aws_lb_listener" "https_listener" {
   load_balancer_arn = aws_lb.my_alb.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 443
+  protocol          = "HTTPS"
+
+  ssl_policy = "ELBSecurityPolicy-2016-08"  # You can specify a different SSL policy here if needed
 
   default_action {
     type = "authenticate-cognito"
@@ -67,26 +69,14 @@ resource "aws_lb_listener" "http_listener" {
     }
   }
 
+  # Forward action if authenticated
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.my_target_group.arn
   }
-}
 
-# ALB Listener with SSL (HTTPS)
-resource "aws_lb_listener" "https_listener" {
-  load_balancer_arn = aws_lb.my_alb.arn
-  port              = 443
-  protocol          = "HTTPS"
-
-  ssl_certificate {
-    certificate_arn = aws_acm_certificate.my_cert.arn
-  }
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.my_target_group.arn
-  }
+  # Attach the ACM certificate ARN for SSL termination
+  certificate_arn = aws_acm_certificate.my_cert.arn
 }
 
 # VPC Creation
