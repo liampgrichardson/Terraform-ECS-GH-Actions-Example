@@ -1,12 +1,19 @@
 import boto3
 import pandas as pd
 from tqdm import tqdm
+from datetime import datetime
 pd.set_option('display.max_columns', None)
+
+
+def get_last_day_timestamps():
+    # Get the current UTC time in ISO format
+    now_utc = datetime.utcnow().strftime('%Y-%m-%d')
+    return pd.date_range(end=now_utc, periods=1440, freq="T")
 
 
 # Define your known timestamps
 def get_known_timestamps():
-    return pd.date_range(start="2024-01-01", periods=1440, freq="T")
+    return
 
 
 # Batch fetch data from DynamoDB using the client
@@ -73,7 +80,7 @@ def items_to_df(items):
 
 
 def query_db():
-    timestamps = get_known_timestamps()
+    timestamps = get_last_day_timestamps()
     items = fetch_from_dynamodb(timestamps)
     df = items_to_df(items)
 
