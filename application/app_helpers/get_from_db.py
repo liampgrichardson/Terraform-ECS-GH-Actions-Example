@@ -1,13 +1,17 @@
 import boto3
 import pandas as pd
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, timezone
 pd.set_option('display.max_columns', None)
 
 
 def get_last_day_timestamps():
     # Get the current UTC time in ISO format
-    now_utc = datetime.utcnow().strftime('%Y-%m-%d')
+    now_utc = datetime.now(timezone.utc)  # .strftime('%Y-%m-%d %H:%M')
+
+    # Round down to the nearest minute by removing seconds and microseconds
+    now_utc = now_utc.replace(second=0, microsecond=0)
+
     return pd.date_range(end=now_utc, periods=1440, freq="T")
 
 
@@ -81,6 +85,8 @@ def items_to_df(items):
 
 def query_db():
     timestamps = get_last_day_timestamps()
+    print(timestamps[0])
+    print(timestamps[-1])
     items = fetch_from_dynamodb(timestamps)
     df = items_to_df(items)
 

@@ -102,7 +102,7 @@ def render_content(tab):
             dcc.Graph(id='multi-axis-graph', config={'displayModeBar': True},
                       figure={'layout': {'plot_bgcolor': 'rgba(0,0,0,0)', 'paper_bgcolor': 'rgba(0,0,0,0)'}}),
             dcc.Dropdown(id='column-selector', multi=True, placeholder="Select columns",
-                         value=["12h_close_mean", "pfma"],
+                         value=["close"],
                          className="ui dropdown"),
         ], className="ui raised segment")
     elif tab == 'news-tab':
