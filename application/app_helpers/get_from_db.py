@@ -11,7 +11,7 @@ def get_known_timestamps():
 
 # Batch fetch data from DynamoDB using the client
 def fetch_from_dynamodb(timestamps):
-    dynamodb = boto3.client('dynamodb')
+    dynamodb = boto3.client('dynamodb', region_name='eu-west-2')
     table_name = 'TradingApp-table1'
 
     batch_size = 100  # Max allowed by DynamoDB

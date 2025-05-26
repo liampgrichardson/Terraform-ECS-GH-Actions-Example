@@ -185,7 +185,6 @@ resource "aws_iam_policy" "ecs_dynamodb_policy" {
           "dynamodb:Query",
           "dynamodb:Scan",
           "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
           "dynamodb:DescribeTable"
         ],
         Resource = "*" # Ideally scope to the specific table ARN
