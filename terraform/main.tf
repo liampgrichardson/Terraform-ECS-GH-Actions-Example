@@ -169,34 +169,34 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-# ECS Task Role (updated to include Timestream policy)
-resource "aws_iam_policy" "ecs_timestream_policy" {
-  name        = "ecsTimestreamPolicy"
-  description = "Policy to allow ECS tasks to interact with Timestream"
+resource "aws_iam_policy" "ecs_dynamodb_policy" {
+  name        = "ecsDynamoDBPolicy"
+  description = "Policy to allow ECS tasks to interact with DynamoDB"
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Sid       = "AllowTimestreamReadAccess",
-        Effect    = "Allow",
-        Action    = [
-          "timestream:DescribeEndpoints",
-          "timestream:Select",
-          "timestream:Query",
-          "timestream:SelectValues",
-          "timestream:DescribeTable",
-          "timestream:ListMeasures"
+        Effect   = "Allow",
+        Action   = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:DescribeTable"
         ],
-        Resource  = "*"
+        Resource = "*" # Ideally scope to the specific table ARN
       }
     ]
   })
 }
 
-# Attach the Timestream policy to the ECS Task Role
-resource "aws_iam_role_policy_attachment" "ecs_timestream_policy_attachment" {
+resource "aws_iam_role_policy_attachment" "ecs_dynamodb_policy_attachment" {
   role       = aws_iam_role.ecs_task_role.name
-  policy_arn = aws_iam_policy.ecs_timestream_policy.arn
+  policy_arn = aws_iam_policy.ecs_dynamodb_policy.arn
 }
 
 # Add permissions for task execution
