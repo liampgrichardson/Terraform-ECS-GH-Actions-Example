@@ -3,4 +3,5 @@ pandas
 dash
 plotly
 dash-auth
+tqdm
 numpy

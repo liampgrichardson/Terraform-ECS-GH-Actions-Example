@@ -3,20 +3,13 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import pandas as pd
 import numpy as np
-import boto3
 import dash_auth
-from app_helpers.get_from_db import query_last_days
+from app_helpers.get_from_db import query_db
 
 # Define authorized users
 VALID_USERNAME_PASSWORD_PAIRS = {
-    "TradeAppUser": "TradeApp2025"
+    "TAUser": "TA2025"
 }
-
-# Configuration for Timestream
-timestream_client = boto3.client("timestream-query", region_name="eu-west-1")
-database_name = "my-timestream-database"
-table_name = "TestTable"
-days = 7
 
 # Set Plotly Theme
 plotly_theme = "plotly"
@@ -72,7 +65,8 @@ app.layout = html.Div([
         className="footer-container",
         children=[
             html.P("Developed by Liam Richardson - 2025", style={"color": dark_blue, "textAlign": "center"}),
-            html.P("For inquiries, contact: liampgrichardson@gmail.com", style={"color": dark_blue, "textAlign": "center"}),
+            html.P("For inquiries, contact: liampgrichardson@gmail.com",
+                   style={"color": dark_blue, "textAlign": "center"}),
             html.A("Connect on LinkedIn", href="https://www.linkedin.com/in/liam-richardson/", target="_blank",
                    style={"color": dark_blue, "textAlign": "center", "display": "block"})
         ],
@@ -83,14 +77,16 @@ app.layout = html.Div([
     )
 ])
 
+
 # Callback to fetch data every minute and store it in memory
 @app.callback(
     Output('data-store', 'data'),
     Input('interval-component', 'n_intervals')
 )
 def fetch_data(n):
+    _ = n
     print("Fetching data from database...")
-    df = query_last_days(timestream_client, database_name, table_name, days)
+    df = query_db()
     df = df.apply(pd.to_numeric, errors='coerce').dropna(axis=1, how='all')
     return df.to_json(orient='split')  # Store DataFrame as JSON
 
@@ -105,19 +101,24 @@ def render_content(tab):
         return html.Div([
             dcc.Graph(id='multi-axis-graph', config={'displayModeBar': True},
                       figure={'layout': {'plot_bgcolor': 'rgba(0,0,0,0)', 'paper_bgcolor': 'rgba(0,0,0,0)'}}),
-            dcc.Dropdown(id='column-selector', multi=True, placeholder="Select columns", value=["close", "Close Prediction (1h)"],
+            dcc.Dropdown(id='column-selector', multi=True, placeholder="Select columns",
+                         value=["12h_close_mean", "pfma"],
                          className="ui dropdown"),
         ], className="ui raised segment")
     elif tab == 'news-tab':
         return html.Div([
             html.H3("Latest News Headlines", className="ui header", style={"color": dark_blue}),
-            html.Ul([html.Li(f"News item {i+1}", style={"color": dark_blue}) for i in range(3)], className="ui list"),
+            html.Ul([html.Li(f"News item {i+1}", style={"color": dark_blue}) for i in range(3)],
+                    className="ui list"),
             html.H3("Market Trends", className="ui header", style={"color": dark_blue}),
-            html.Ul([html.Li(f"Market Trend {i+1}", style={"color": dark_blue}) for i in range(3)], className="ui list"),
+            html.Ul([html.Li(f"Market Trend {i+1}", style={"color": dark_blue}) for i in range(3)],
+                    className="ui list"),
             html.H3("Upcoming Events", className="ui header", style={"color": dark_blue}),
-            html.Ul([html.Li(f"Upcoming Event {i+1}", style={"color": dark_blue}) for i in range(3)], className="ui list"),
+            html.Ul([html.Li(f"Upcoming Event {i+1}", style={"color": dark_blue}) for i in range(3)],
+                    className="ui list"),
             html.H3("Investment Trends", className="ui header", style={"color": dark_blue}),
-            html.Ul([html.Li(f"Investment Trend {i+1}", style={"color": dark_blue}) for i in range(3)], className="ui list"),
+            html.Ul([html.Li(f"Investment Trend {i+1}", style={"color": dark_blue}) for i in range(3)],
+                    className="ui list"),
         ], className="ui raised segment")
 
 

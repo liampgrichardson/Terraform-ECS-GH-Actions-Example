@@ -1,78 +1,97 @@
 import boto3
 import pandas as pd
-from botocore.exceptions import ClientError
+from tqdm import tqdm
 pd.set_option('display.max_columns', None)
 
 
-def query_last_days(client, database_name, table_name, days):
-    total_ms = days * 86400000
-    # Query to fetch the last record to one day before the last record
-    query = f"""
-        WITH last_record_time AS (
-            SELECT MAX(time) AS last_time
-            FROM "{database_name}"."{table_name}"
-        )
-        SELECT * 
-        FROM "{database_name}"."{table_name}"
-        WHERE time BETWEEN TIMESTAMPADD('MILLISECOND', -{total_ms}, (SELECT last_time FROM last_record_time))
-                       AND (SELECT last_time FROM last_record_time)
-        ORDER BY time DESC
-    """
+# Define your known timestamps
+def get_known_timestamps():
+    return pd.date_range(start="2024-01-01", periods=1440, freq="T")
 
-    try:
-        paginator = client.get_paginator("query")
-        response_iterator = paginator.paginate(QueryString=query)
 
-        rows = []
-        columns = None
+# Batch fetch data from DynamoDB using the client
+def fetch_from_dynamodb(timestamps):
+    dynamodb = boto3.client('dynamodb')
+    table_name = 'TradingApp-table1'
 
-        for response in response_iterator:
-            if "ColumnInfo" in response and not columns:
-                columns = [col["Name"] for col in response["ColumnInfo"]]
-            for row in response["Rows"]:
-                rows.append([
-                    datum.get("ScalarValue") for datum in row["Data"]
-                ])
+    batch_size = 100  # Max allowed by DynamoDB
+    all_items = []
 
-        if columns and rows:
-            # Create DataFrame
-            df = pd.DataFrame(rows, columns=columns)
-            # Reorganize data to create new columns for each measure_name
-            df_pivot = df.pivot_table(index='time', columns='measure_name', values=[col for col in df.columns if col.startswith('measure_value::')], aggfunc='first')
-            # Reorganize indexes and columns
-            df_pivot.columns = df_pivot.columns.droplevel(0)
-            return df_pivot
+    for i in tqdm(range(0, len(timestamps), batch_size), desc="Batch fetching"):
+        batch_keys = [{'TradingApp-table1-partitionkey': {'S': str(ts)}} for ts in timestamps[i:i + batch_size]]
+        request = {table_name: {'Keys': batch_keys}}
+
+        # Handle retries for unprocessed keys
+        while request:
+            response = dynamodb.batch_get_item(RequestItems=request)
+            all_items.extend(response.get('Responses', {}).get(table_name, []))
+            request = response.get('UnprocessedKeys', {})
+            if request:
+                print("need to handle UnprocessedKeys")
+
+    return all_items
+
+
+# Parse each item dynamically based on its type
+def parse_dynamodb_item(item):
+    parsed = {}
+    for key, value in item.items():
+        # Handle different DynamoDB types
+        if 'S' in value:
+            parsed[key] = value['S']
+        elif 'N' in value:
+            parsed[key] = float(value['N'])
+        elif 'BOOL' in value:
+            parsed[key] = value['BOOL']
+        elif 'NULL' in value:
+            parsed[key] = None
+        elif 'M' in value:
+            parsed[key] = value['M']  # Consider parsing nested maps if needed
+        elif 'L' in value:
+            parsed[key] = value['L']  # Consider parsing nested lists if needed
         else:
-            print("No data retrieved.")
-            return None
+            parsed[key] = value  # Fallback
+    return parsed
 
-    except ClientError as e:
-        print(f"Error querying data: {e}")
-        return None
+
+def items_to_df(items):
+    if not items:
+        return pd.DataFrame()
+
+    print("Example item:", items[-1])
+
+    parsed_items = [parse_dynamodb_item(item) for item in items]
+    df = pd.DataFrame(parsed_items)
+
+    # Try to convert 'timestamp' to datetime if it exists
+    if 'timestamp' in df.columns:
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        df.set_index('timestamp', inplace=True)
+        df.sort_index(inplace=True)
+
+    return df
+
+
+def query_db():
+    timestamps = get_known_timestamps()
+    items = fetch_from_dynamodb(timestamps)
+    df = items_to_df(items)
+
+    return df
 
 
 def main():
-    database_name = "my-timestream-database"  # Replace with your Timestream database name
-    table_name = "TestTable"  # Replace with your desired table name
 
-    # Initialize boto3 client
-    timestream_client = boto3.client("timestream-query", region_name="eu-west-1")  # Replace region if necessary
-
-    # Query the last days data
-    df = query_last_days(timestream_client, database_name, table_name, 7)
+    df = query_db()
 
     if df is not None:
-        print("\nData retrieved from Timestream:")
-        print(df)
-        print("\nDataframe column structure:")
-        print(df.columns)
-        print("\nDataframe first value:")
-        print(df.iloc[0])
-        print("\nDataframe last value:")
-        print(df.iloc[-1])
-        # Optionally save to a file
-        df.to_csv("last_day_data.csv", index=False)
-        print("Data saved to 'last_day_data.csv'.")
+        print(f"Total rows fetched: {len(df)}")
+        if not df.empty:
+            print("\nFirst row:\n", df.iloc[0])
+            print("\nLast row:\n", df.iloc[-1])
+        # Optionally save to CSV
+        df.to_csv("fetched_data.csv")
+        print("Data saved to 'fetched_data.csv'.")
 
 
 if __name__ == "__main__":
