@@ -31,7 +31,7 @@ auth = dash_auth.BasicAuth(app, VALID_USERNAME_PASSWORD_PAIRS)
 app.title = "Trading Application"
 
 app.layout = html.Div([
-    dcc.Interval(id='interval-component', interval=60 * 1000, n_intervals=0),  # Query every minute
+    dcc.Interval(id='interval-component', interval=600 * 1000, n_intervals=0),  # Query every 10 minutes
     dcc.Store(id='data-store', data=None),  # Store queried data in memory
 
     html.Div(
