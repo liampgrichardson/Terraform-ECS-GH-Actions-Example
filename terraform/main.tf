@@ -1,4 +1,4 @@
-# Define the provider
+# Provider and backend (unchanged)
 provider "aws" {
   region = var.aws_region
   default_tags {
@@ -6,7 +6,6 @@ provider "aws" {
   }
 }
 
-# Backend configuration
 terraform {
   backend "s3" {
     bucket = "my-tfstate-bucket-001"
@@ -15,36 +14,31 @@ terraform {
   }
 }
 
-# Get available AZs in the specified region
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Reference existing ECR repository
 data "aws_ecr_repository" "existing_repository" {
   name = var.ecr_repository_name
 }
 
-# VPC
+# VPC and subnet (unchanged)
 resource "aws_vpc" "my_vpc" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
   enable_dns_hostnames = true
 }
 
-# Single Subnet in the first available AZ
 resource "aws_subnet" "my_subnet" {
-  vpc_id                  = aws_vpc.my_vpc.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[0]
+  vpc_id            = aws_vpc.my_vpc.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
 }
 
-# Internet Gateway
 resource "aws_internet_gateway" "my_igw" {
   vpc_id = aws_vpc.my_vpc.id
 }
 
-# Route Table
 resource "aws_route_table" "my_route_table" {
   vpc_id = aws_vpc.my_vpc.id
 
@@ -54,13 +48,11 @@ resource "aws_route_table" "my_route_table" {
   }
 }
 
-# Route Table Association
 resource "aws_route_table_association" "my_rta" {
   subnet_id      = aws_subnet.my_subnet.id
   route_table_id = aws_route_table.my_route_table.id
 }
 
-# Security Group for ECS
 resource "aws_security_group" "my_security_group" {
   name_prefix = "ecs-security-group"
   vpc_id      = aws_vpc.my_vpc.id
@@ -80,86 +72,78 @@ resource "aws_security_group" "my_security_group" {
   }
 }
 
-# ECS Cluster
 resource "aws_ecs_cluster" "my_cluster" {
   name = "my-cluster"
 }
 
-# IAM Roles
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
+# IAM Role for EC2 container instances
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "ecsInstanceRole"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Action = "sts:AssumeRole",
-      Principal = { Service = "ecs-tasks.amazonaws.com" },
+      Principal = { Service = "ec2.amazonaws.com" },
       Effect = "Allow"
     }]
   })
 }
 
-resource "aws_iam_role" "ecs_task_role" {
-  name = "ecsTaskRole"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Action = "sts:AssumeRole",
-      Principal = { Service = "ecs-tasks.amazonaws.com" },
-      Effect = "Allow"
-    }]
-  })
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy_attachment" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
 
-# IAM Policy for DynamoDB Access
-resource "aws_iam_policy" "ecs_dynamodb_policy" {
-  name        = "ecsDynamoDBPolicy"
-  description = "Policy to allow ECS tasks to interact with DynamoDB"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect   = "Allow",
-      Action   = [
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:BatchGetItem",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem",
-        "dynamodb:DescribeTable"
-      ],
-      Resource = "*"
-    }]
-  })
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "ecsInstanceProfile"
+  role = aws_iam_role.ecs_instance_role.name
 }
 
-# IAM Policy Attachments
-resource "aws_iam_role_policy_attachment" "ecs_dynamodb_policy_attachment" {
-  role       = aws_iam_role.ecs_task_role.name
-  policy_arn = aws_iam_policy.ecs_dynamodb_policy.arn
+# Get latest ECS-optimized Amazon Linux 2 AMI
+data "aws_ami" "ecs_ami" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-ecs-hvm-*-x86_64-ebs"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+# Single EC2 instance with ECS agent
+resource "aws_instance" "ecs_instance" {
+  ami                         = data.aws_ami.ecs_ami.id
+  instance_type               = "t3.micro"
+  subnet_id                   = aws_subnet.my_subnet.id
+  vpc_security_group_ids      = [aws_security_group.my_security_group.id]
+  iam_instance_profile        = aws_iam_instance_profile.ecs_instance_profile.name
+  associate_public_ip_address = false   # We'll attach EIP explicitly
+
+  user_data = base64encode(<<EOF
+#!/bin/bash
+echo "ECS_CLUSTER=${aws_ecs_cluster.my_cluster.name}" > /etc/ecs/ecs.config
+EOF
+  )
+
+  tags = var.global_tags
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_cw_logging_policy_attachment" {
-  role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-}
-
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/my-service"
-  retention_in_days = 7
+# Allocate Elastic IP for this instance
+resource "aws_eip" "ecs_instance_eip" {
+  instance = aws_instance.ecs_instance.id
+  vpc      = true
 }
 
 # Task Definition
 resource "aws_ecs_task_definition" "my_task_definition" {
   family                   = "my-task-definition"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
   cpu                      = "256"
@@ -189,25 +173,94 @@ resource "aws_ecs_task_definition" "my_task_definition" {
   ])
 }
 
-# ECS Service
+# ECS Service running on EC2 launch type
 resource "aws_ecs_service" "my_service" {
   name            = "my-service"
   cluster         = aws_ecs_cluster.my_cluster.id
   task_definition = aws_ecs_task_definition.my_task_definition.arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+  launch_type     = "EC2"
   force_new_deployment = true
 
-  network_configuration {
-    subnets         = [aws_subnet.my_subnet.id]
-    security_groups = [aws_security_group.my_security_group.id]
-    assign_public_ip = true
-  }
+  depends_on = [aws_instance.ecs_instance]
 }
 
-# Output image tag
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "ecs_log_group" {
+  name              = "/ecs/my-service"
+  retention_in_days = 7
+}
+
+# IAM Roles for Task Execution and Task Role (unchanged)
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Principal = { Service = "ecs-tasks.amazonaws.com" },
+      Effect = "Allow"
+    }]
+  })
+}
+
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecsTaskRole"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Principal = { Service = "ecs-tasks.amazonaws.com" },
+      Effect = "Allow"
+    }]
+  })
+}
+
+resource "aws_iam_policy" "ecs_dynamodb_policy" {
+  name        = "ecsDynamoDBPolicy"
+  description = "Policy to allow ECS tasks to interact with DynamoDB"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect   = "Allow",
+      Action   = [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem",
+        "dynamodb:DescribeTable"
+      ],
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_dynamodb_policy_attachment" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = aws_iam_policy.ecs_dynamodb_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_cw_logging_policy_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+}
+
+# Outputs
 output "image_tag" {
   description = "The image tag for the deployed application"
   value       = var.image_tag
   sensitive   = true
+}
+
+output "ecs_instance_eip" {
+  description = "Elastic IP assigned to the ECS container instance"
+  value       = aws_eip.ecs_instance_eip.public_ip
 }
