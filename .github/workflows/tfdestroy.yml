@@ -34,8 +34,8 @@ jobs:
       # Step 3: Destroy Terraform resources
       - name: Destroy Terraform resources
         env:
-          TF_VAR_aws_region: $AWS_REGION
-          TF_VAR_ecr_repository_name: $ECR_REPOSITORY
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_ecr_repository_name: ${{ env.ECR_REPOSITORY }}
           TF_VAR_image_tag: $(terraform output -raw image_tag)  # Fetch image_tag from deployment
         run: |
           cd terraform
