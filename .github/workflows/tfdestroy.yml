@@ -51,7 +51,8 @@ jobs:
         id: get_image_tag
         run: |
           cd terraform
-          echo "IMAGE_TAG=$(terraform output -raw image_tag)" >> $GITHUB_ENV
+          IMAGE_TAG=$(terraform output -raw image_tag)
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       # Step 3: Destroy Terraform resources
       - name: Destroy Terraform resources
