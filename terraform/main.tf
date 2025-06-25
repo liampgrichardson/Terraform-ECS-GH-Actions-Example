@@ -9,7 +9,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "my-tfstate-bucket-001"
-    key    = "terraform.tfstate"
+    key    = "trading-app-tf-key.tfstate"
     region = "eu-west-1"
   }
 }
@@ -136,7 +136,6 @@ EOF
 # Allocate Elastic IP for this instance
 resource "aws_eip" "ecs_instance_eip" {
   instance = aws_instance.ecs_instance.id
-  vpc      = true
 }
 
 # Task Definition

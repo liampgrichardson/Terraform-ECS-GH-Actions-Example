@@ -14,6 +14,8 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REPOSITORY: trading-app/front-end
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
     - name: Checkout repository
@@ -27,14 +29,11 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
-        IMAGE_TAG: ${{ github.sha }}  # Use the commit SHA for unique tagging
       run: |
         cd application
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # Step 2: Set up Terraform
     - name: Set up Terraform
       uses: hashicorp/setup-terraform@v2
 
@@ -45,9 +44,9 @@ jobs:
 
     - name: Plan Terraform changes
       env:
-        TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
-        TF_VAR_ecr_repository_name: ${{ secrets.ECR_REPOSITORY_NAME }}
-        TF_VAR_image_tag: ${{ github.sha }}  # Pass the image tag
+        TF_VAR_aws_region: $AWS_REGION
+        TF_VAR_ecr_repository_name: $ECR_REPOSITORY
+        TF_VAR_image_tag: $IMAGE_TAG
       run: |
         cd terraform
         terraform plan -out=tfplan
