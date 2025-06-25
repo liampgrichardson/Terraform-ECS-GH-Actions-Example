@@ -30,10 +30,6 @@ jobs:
         run: |
           cd terraform
           terraform init
-          IMAGE_TAG=$(terraform-bin output image_tag)
-          echo "Image tag is: $IMAGE_TAG"
-          IMAGE_TAG=$(terraform-bin output -raw image_tag)
-          echo "Image tag is: $IMAGE_TAG"
           IMAGE_TAG=$(terraform output -raw image_tag)
           echo "Image tag is: $IMAGE_TAG"
           IMAGE_TAG=$(terraform output image_tag)
