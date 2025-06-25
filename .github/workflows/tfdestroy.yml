@@ -35,6 +35,7 @@ jobs:
         id: get_image_tag
         run: |
           cd terraform
+          set +x
           IMAGE_TAG=$(terraform output image_tag)
           echo "Image tag is: $IMAGE_TAG"
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
