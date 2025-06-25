@@ -47,12 +47,18 @@ jobs:
 #          cd terraform
 #          terraform apply tfplan
 
+      - name: Get image_tag output
+        id: get_image_tag
+        run: |
+          cd terraform
+          echo "IMAGE_TAG=$(terraform output -raw image_tag)" >> $GITHUB_ENV
+
       # Step 3: Destroy Terraform resources
       - name: Destroy Terraform resources
         env:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_ecr_repository_name: ${{ env.ECR_REPOSITORY }}
-          TF_VAR_image_tag: ${{ terraform output -raw image_tag }}  # Fetch image_tag from deployment
+          TF_VAR_image_tag: ${{ env.IMAGE_TAG }} # Fetch image_tag from deployment
           TF_VAR_desired_count: 0
         run: |
           cd terraform
