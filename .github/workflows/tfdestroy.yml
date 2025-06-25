@@ -30,6 +30,9 @@ jobs:
         run: |
           cd terraform
           terraform init
+          IMAGE_TAG=$(terraform output -raw image_tag)
+          echo "Image tag is: $IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
 #      # apply instance count = 0 for ecs
 #      - name: Plan Terraform changes
