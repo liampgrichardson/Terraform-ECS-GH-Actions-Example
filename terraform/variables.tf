@@ -29,3 +29,8 @@ variable "cognito_password" {
   description = "The password for app login"
   type        = string
 }
+
+variable "desired_count" {
+  description = "desired number of ec2 instances for ecs service"
+  type        = string
+}
