@@ -52,7 +52,7 @@ jobs:
         env:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_ecr_repository_name: ${{ env.ECR_REPOSITORY }}
-          TF_VAR_image_tag: $(terraform output -raw image_tag)  # Fetch image_tag from deployment
+          TF_VAR_image_tag: ${{ terraform output -raw image_tag }}  # Fetch image_tag from deployment
           TF_VAR_desired_count: 0
         run: |
           cd terraform
