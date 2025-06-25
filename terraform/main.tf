@@ -129,8 +129,6 @@ resource "aws_instance" "ecs_instance" {
 echo "ECS_CLUSTER=${aws_ecs_cluster.my_cluster.name}" > /etc/ecs/ecs.config
 EOF
   )
-
-  tags = var.global_tags
 }
 
 # Allocate Elastic IP for this instance
@@ -190,7 +188,7 @@ resource "aws_cloudwatch_log_group" "ecs_log_group" {
   retention_in_days = 7
 }
 
-# IAM Roles for Task Execution and Task Role (unchanged)
+# IAM Roles for Task Execution and Task Role
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
   assume_role_policy = jsonencode({
