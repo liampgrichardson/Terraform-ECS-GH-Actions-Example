@@ -44,9 +44,9 @@ jobs:
 
     - name: Plan Terraform changes
       env:
-        TF_VAR_aws_region: $AWS_REGION
-        TF_VAR_ecr_repository_name: $ECR_REPOSITORY
-        TF_VAR_image_tag: $IMAGE_TAG
+        TF_VAR_aws_region: $($AWS_REGION)
+        TF_VAR_ecr_repository_name: $($ECR_REPOSITORY)
+        TF_VAR_image_tag: $($IMAGE_TAG)
       run: |
         cd terraform
         terraform plan -out=tfplan
