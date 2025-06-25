@@ -9,7 +9,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "my-tfstate-bucket-001"
-    key    = "terraform.tfstate"
+    key    = "trading-app-front-end-tf-key.tfstate"
     region = "eu-west-1"
   }
 }
@@ -181,7 +181,7 @@ resource "aws_ecs_service" "my_service" {
   launch_type     = "EC2"
   force_new_deployment = true
 
-  depends_on = [aws_instance.ecs_instance]
+  depends_on = [aws_instance.ecs_instance, aws_ecs_cluster.my_cluster]
 }
 
 # CloudWatch Log Group
