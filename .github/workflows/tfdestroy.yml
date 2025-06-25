@@ -36,6 +36,7 @@ jobs:
         run: |
           cd terraform
           terraform-bin output image_tag
+          terraform-bin output -raw image_tag
           IMAGE_TAG=$(terraform output -raw image_tag)
           echo "Image tag is: $IMAGE_TAG"
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
