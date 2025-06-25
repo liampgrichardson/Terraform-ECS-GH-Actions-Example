@@ -55,13 +55,15 @@ jobs:
 #          cd terraform
 #          terraform apply tfplan
 
-#      # Step 3: Destroy Terraform resources
-#      - name: Destroy Terraform resources
-#        env:
-#          TF_VAR_aws_region: ${{ env.AWS_REGION }}
-#          TF_VAR_ecr_repository_name: ${{ env.ECR_REPOSITORY }}
-#          TF_VAR_image_tag: ${{ env.IMAGE_TAG }} # Fetch image_tag from deployment
-#          TF_VAR_desired_count: 0
-#        run: |
-#          cd terraform
-#          terraform destroy -auto-approve
+      # Step 3: Destroy Terraform resources
+      - name: Destroy Terraform resources
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_ecr_repository_name: ${{ env.ECR_REPOSITORY }}
+          TF_VAR_image_tag: ${{ env.IMAGE_TAG }} # Fetch image_tag from deployment
+          TF_VAR_desired_count: 0
+        run: |
+          cd terraform
+          terraform plan -out=tfplan
+          terraform apply tfplan
+          terraform destroy -auto-approve
