@@ -9,7 +9,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "my-tfstate-bucket-001"
-    key    = "trading-app-front-end-tf-key.tfstate"
+    key    = "trading-app-front-end-test-tf-key.tfstate"
     region = "eu-west-1"
   }
 }
